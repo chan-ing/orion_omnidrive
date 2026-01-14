@@ -6,3 +6,4 @@ test/
 __pycache__/
 **/__pycache__/
 *.so
+adzoo/orion/work_dirs/
