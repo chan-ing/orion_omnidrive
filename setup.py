@@ -45,7 +45,7 @@ def parse_requirements(fname='requirements.txt', with_version=True):
     specific versioning information.
 
     Args:
-        fname (str): path to requirements file
+       fname (str): path to requirements file
         with_version (bool, default=False): if True include version specs
 
     Returns:

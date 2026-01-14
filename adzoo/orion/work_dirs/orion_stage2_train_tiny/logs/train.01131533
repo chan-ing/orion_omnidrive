@@ -1,0 +1,89 @@
+Traceback (most recent call last):
+  File "./adzoo/orion/train.py", line 11, in <module>
+    import mmcv
+  File "/mnt/sdb/swseo/Orion/mmcv/__init__.py", line 8, in <module>
+    from .core.bbox.coder.nms_free_coder import NMSFreeCoder
+  File "/mnt/sdb/swseo/Orion/mmcv/core/__init__.py", line 6, in <module>
+    from .post_processing import *  # noqa: F401, F403
+  File "/mnt/sdb/swseo/Orion/mmcv/core/post_processing/__init__.py", line 3, in <module>
+    from .box3d_nms import aligned_3d_nms, box3d_multiclass_nms, circle_nms
+  File "/mnt/sdb/swseo/Orion/mmcv/core/post_processing/box3d_nms.py", line 6, in <module>
+    from mmcv.ops.iou3d_det.iou3d_utils import nms_gpu, nms_normal_gpu
+  File "/mnt/sdb/swseo/Orion/mmcv/ops/__init__.py", line 2, in <module>
+    from .modulated_deform_conv import (ModulatedDeformConv2d,
+  File "/mnt/sdb/swseo/Orion/mmcv/ops/modulated_deform_conv.py", line 11, in <module>
+    from ..models import CONV_LAYERS
+  File "/mnt/sdb/swseo/Orion/mmcv/models/__init__.py", line 9, in <module>
+    from .dense_heads import *  # noqa: F401,F403
+  File "/mnt/sdb/swseo/Orion/mmcv/models/dense_heads/__init__.py", line 4, in <module>
+    from .focal_head import FocalHead
+  File "/mnt/sdb/swseo/Orion/mmcv/models/dense_heads/focal_head.py", line 20, in <module>
+    from projects.mmdet3d_plugin.models.utils.misc import draw_heatmap_gaussian, apply_center_offset, apply_ltrb
+  File "/mnt/sdb/swseo/Orion/projects/mmdet3d_plugin/__init__.py", line 1, in <module>
+    from .core.bbox.assigners.hungarian_assigner_3d import HungarianAssigner3D
+  File "/mnt/sdb/swseo/Orion/projects/mmdet3d_plugin/core/bbox/assigners/__init__.py", line 1, in <module>
+    from .hungarian_assigner_3d import HungarianAssigner3D
+  File "/mnt/sdb/swseo/Orion/projects/mmdet3d_plugin/core/bbox/assigners/hungarian_assigner_3d.py", line 6, in <module>
+    from mmdet.core.bbox.builder import BBOX_ASSIGNERS
+  File "/mnt/sdb/swseo/orion_docker/envs/orion_omni/lib/python3.8/site-packages/mmdet/core/__init__.py", line 3, in <module>
+    from .bbox import *  # noqa: F401, F403
+  File "/mnt/sdb/swseo/orion_docker/envs/orion_omni/lib/python3.8/site-packages/mmdet/core/bbox/__init__.py", line 2, in <module>
+    from .assigners import (AssignResult, BaseAssigner, CenterRegionAssigner,
+  File "/mnt/sdb/swseo/orion_docker/envs/orion_omni/lib/python3.8/site-packages/mmdet/core/bbox/assigners/__init__.py", line 2, in <module>
+    from .approx_max_iou_assigner import ApproxMaxIoUAssigner
+  File "/mnt/sdb/swseo/orion_docker/envs/orion_omni/lib/python3.8/site-packages/mmdet/core/bbox/assigners/approx_max_iou_assigner.py", line 6, in <module>
+    from .max_iou_assigner import MaxIoUAssigner
+  File "/mnt/sdb/swseo/orion_docker/envs/orion_omni/lib/python3.8/site-packages/mmdet/core/bbox/assigners/max_iou_assigner.py", line 6, in <module>
+    from .assign_result import AssignResult
+  File "/mnt/sdb/swseo/orion_docker/envs/orion_omni/lib/python3.8/site-packages/mmdet/core/bbox/assigners/assign_result.py", line 4, in <module>
+    from mmdet.utils import util_mixins
+  File "/mnt/sdb/swseo/orion_docker/envs/orion_omni/lib/python3.8/site-packages/mmdet/utils/__init__.py", line 13, in <module>
+    from .util_distribution import build_ddp, build_dp, get_device
+  File "/mnt/sdb/swseo/orion_docker/envs/orion_omni/lib/python3.8/site-packages/mmdet/utils/util_distribution.py", line 3, in <module>
+    from mmcv.parallel import MMDataParallel, MMDistributedDataParallel
+ImportError: cannot import name 'MMDataParallel' from 'mmcv.parallel' (/mnt/sdb/swseo/Orion/mmcv/parallel/__init__.py)
+/mnt/sdb/swseo/orion_docker/envs/orion_omni/lib/python3.8/site-packages/torch/distributed/launch.py:208: FutureWarning: The module torch.distributed.launch is deprecated
+and will be removed in future. Use torchrun.
+Note that --use-env is set by default in torchrun.
+If your script expects `--local-rank` argument to be set, please
+change it to read from `os.environ['LOCAL_RANK']` instead. See 
+https://pytorch.org/docs/stable/distributed.html#launch-utility for 
+further instructions
+
+  main()
+E0113 15:34:13.452938 140368963692352 torch/distributed/elastic/multiprocessing/api.py:833] failed (exitcode: 1) local_rank: 0 (pid: 11819) of binary: /mnt/sdb/swseo/orion_docker/envs/orion_omni/bin/python
+Traceback (most recent call last):
+  File "/mnt/sdb/swseo/orion_docker/envs/orion_omni/lib/python3.8/runpy.py", line 194, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/mnt/sdb/swseo/orion_docker/envs/orion_omni/lib/python3.8/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/mnt/sdb/swseo/orion_docker/envs/orion_omni/lib/python3.8/site-packages/torch/distributed/launch.py", line 208, in <module>
+    main()
+  File "/mnt/sdb/swseo/orion_docker/envs/orion_omni/lib/python3.8/site-packages/typing_extensions.py", line 2853, in wrapper
+    return arg(*args, **kwargs)
+  File "/mnt/sdb/swseo/orion_docker/envs/orion_omni/lib/python3.8/site-packages/torch/distributed/launch.py", line 204, in main
+    launch(args)
+  File "/mnt/sdb/swseo/orion_docker/envs/orion_omni/lib/python3.8/site-packages/torch/distributed/launch.py", line 189, in launch
+    run(args)
+  File "/mnt/sdb/swseo/orion_docker/envs/orion_omni/lib/python3.8/site-packages/torch/distributed/run.py", line 892, in run
+    elastic_launch(
+  File "/mnt/sdb/swseo/orion_docker/envs/orion_omni/lib/python3.8/site-packages/torch/distributed/launcher/api.py", line 133, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/mnt/sdb/swseo/orion_docker/envs/orion_omni/lib/python3.8/site-packages/torch/distributed/launcher/api.py", line 264, in launch_agent
+    raise ChildFailedError(
+torch.distributed.elastic.multiprocessing.errors.ChildFailedError: 
+============================================================
+./adzoo/orion/train.py FAILED
+------------------------------------------------------------
+Failures:
+  <NO_OTHER_FAILURES>
+------------------------------------------------------------
+Root Cause (first observed failure):
+[0]:
+  time      : 2026-01-13_15:34:13
+  host      : LearningMachine3
+  rank      : 0 (local_rank: 0)
+  exitcode  : 1 (pid: 11819)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+============================================================

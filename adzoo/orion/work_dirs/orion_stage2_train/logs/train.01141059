@@ -1,0 +1,3058 @@
+nccl timeout value is set as 3600s!
+2026-01-14 11:00:00,274 - mmdet - INFO - Environment info:
+------------------------------------------------------------
+MMCV: 0.0.1
+------------------------------------------------------------
+
+2026-01-14 11:00:02,546 - mmdet - INFO - Distributed training: True
+2026-01-14 11:00:04,939 - mmdet - INFO - Config:
+point_cloud_range = [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]
+class_names = [
+    'car', 'van', 'truck', 'bicycle', 'traffic_sign', 'traffic_cone',
+    'traffic_light', 'pedestrian', 'others'
+]
+dataset_type = 'B2DOrionDataset'
+data_root = 'data/bench2drive'
+input_modality = dict(
+    use_lidar=False,
+    use_camera=True,
+    use_radar=False,
+    use_map=False,
+    use_external=True)
+file_client_args = dict(backend='disk')
+train_pipeline = [
+    dict(type='LoadMultiViewImageFromFilesInCeph', to_float32=True),
+    dict(type='PhotoMetricDistortionMultiViewImage'),
+    dict(
+        type='LoadAnnotations3D',
+        with_bbox_3d=True,
+        with_label_3d=True,
+        with_attr_label=True,
+        with_light_state=True),
+    dict(
+        type='VADObjectRangeFilter',
+        point_cloud_range=[-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]),
+    dict(
+        type='VADObjectNameFilter',
+        classes=[
+            'car', 'van', 'truck', 'bicycle', 'traffic_sign', 'traffic_cone',
+            'traffic_light', 'pedestrian', 'others'
+        ]),
+    dict(
+        type='LoadAnnoatationVQA',
+        base_desc_path=None,
+        tokenizer='ckpts/tiny_llama/',
+        max_length=2048,
+        use_gen_token=True,
+        planning_qa_only=True,
+        planning_qa_last=True),
+    dict(
+        type='ResizeCropFlipRotImage',
+        data_aug_conf=dict(
+            resize_lim=(0.37, 0.45),
+            final_dim=(320, 640),
+            bot_pct_lim=(0.0, 0.0),
+            rot_lim=(0.0, 0.0),
+            H=900,
+            W=1600,
+            rand_flip=False),
+        training=True),
+    dict(
+        type='ResizeMultiview3D',
+        img_scale=(640, 640),
+        keep_ratio=False,
+        multiscale_mode='value'),
+    dict(type='PadMultiViewImage', size_divisor=32),
+    dict(
+        type='NormalizeMultiviewImage',
+        mean=[123.675, 116.28, 103.53],
+        std=[58.395, 57.12, 57.375],
+        to_rgb=True),
+    dict(
+        type='PETRFormatBundle3D',
+        class_names=[
+            'car', 'van', 'truck', 'bicycle', 'traffic_sign', 'traffic_cone',
+            'traffic_light', 'pedestrian', 'others'
+        ],
+        collect_keys=[
+            'lidar2img', 'cam_intrinsic', 'timestamp', 'ego_pose',
+            'ego_pose_inv', 'command'
+        ]),
+    dict(
+        type='CustomCollect3D',
+        keys=[
+            'gt_bboxes_3d', 'gt_labels_3d', 'img', 'ego_his_trajs',
+            'input_ids', 'gt_attr_labels', 'ego_fut_trajs', 'ego_fut_masks',
+            'ego_fut_cmd', 'ego_lcf_feat', 'vlm_labels', 'can_bus',
+            'traffic_state_mask', 'traffic_state', 'lidar2img',
+            'cam_intrinsic', 'timestamp', 'ego_pose', 'ego_pose_inv', 'command'
+        ])
+]
+test_pipeline = [
+    dict(type='LoadMultiViewImageFromFilesInCeph', to_float32=True),
+    dict(
+        type='LoadAnnotations3D',
+        with_bbox_3d=True,
+        with_label_3d=True,
+        with_attr_label=True),
+    dict(
+        type='VADObjectRangeFilter',
+        point_cloud_range=[-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]),
+    dict(
+        type='VADObjectNameFilter',
+        classes=[
+            'car', 'van', 'truck', 'bicycle', 'traffic_sign', 'traffic_cone',
+            'traffic_light', 'pedestrian', 'others'
+        ]),
+    dict(
+        type='ResizeCropFlipRotImage',
+        data_aug_conf=dict(
+            resize_lim=(0.37, 0.45),
+            final_dim=(320, 640),
+            bot_pct_lim=(0.0, 0.0),
+            rot_lim=(0.0, 0.0),
+            H=900,
+            W=1600,
+            rand_flip=False),
+        training=False),
+    dict(
+        type='ResizeMultiview3D',
+        img_scale=(640, 640),
+        keep_ratio=False,
+        multiscale_mode='value'),
+    dict(
+        type='NormalizeMultiviewImage',
+        mean=[123.675, 116.28, 103.53],
+        std=[58.395, 57.12, 57.375],
+        to_rgb=True),
+    dict(type='PadMultiViewImage', size_divisor=32),
+    dict(
+        type='LoadAnnoatationCriticalVQATest',
+        load_type=['critical_qa'],
+        tokenizer='ckpts/tiny_llama/',
+        use_gen_token=True,
+        max_length=2048),
+    dict(
+        type='MultiScaleFlipAug3D',
+        img_scale=(1333, 800),
+        pts_scale_ratio=1,
+        flip=False,
+        transforms=[
+            dict(
+                type='PETRFormatBundle3D',
+                collect_keys=[
+                    'lidar2img', 'cam_intrinsic', 'timestamp', 'ego_pose',
+                    'ego_pose_inv', 'command'
+                ],
+                class_names=[
+                    'car', 'van', 'truck', 'bicycle', 'traffic_sign',
+                    'traffic_cone', 'traffic_light', 'pedestrian', 'others'
+                ],
+                with_label=False),
+            dict(
+                type='CustomCollect3D',
+                keys=[
+                    'gt_bboxes_3d', 'gt_labels_3d', 'img', 'ego_his_trajs',
+                    'input_ids', 'gt_attr_labels', 'ego_fut_trajs',
+                    'ego_fut_masks', 'ego_fut_cmd', 'ego_lcf_feat',
+                    'vlm_labels', 'can_bus', 'fut_valid_flag', 'lidar2img',
+                    'cam_intrinsic', 'timestamp', 'ego_pose', 'ego_pose_inv',
+                    'command'
+                ])
+        ])
+]
+eval_pipeline = [
+    dict(
+        type='LoadPointsFromFile',
+        coord_type='LIDAR',
+        load_dim=5,
+        use_dim=5,
+        file_client_args=dict(backend='disk')),
+    dict(
+        type='LoadPointsFromMultiSweeps',
+        sweeps_num=10,
+        file_client_args=dict(backend='disk')),
+    dict(
+        type='DefaultFormatBundle3D',
+        class_names=[
+            'car', 'truck', 'trailer', 'bus', 'construction_vehicle',
+            'bicycle', 'motorcycle', 'pedestrian', 'traffic_cone', 'barrier'
+        ],
+        with_label=False),
+    dict(type='Collect3D', keys=['points'])
+]
+data = dict(
+    samples_per_gpu=2,
+    workers_per_gpu=4,
+    train=dict(
+        type='B2DOrionDataset',
+        data_root='data/bench2drive',
+        ann_file='data/infos/b2d_infos_train.pkl',
+        pipeline=[
+            dict(type='LoadMultiViewImageFromFilesInCeph', to_float32=True),
+            dict(type='PhotoMetricDistortionMultiViewImage'),
+            dict(
+                type='LoadAnnotations3D',
+                with_bbox_3d=True,
+                with_label_3d=True,
+                with_attr_label=True,
+                with_light_state=True),
+            dict(
+                type='VADObjectRangeFilter',
+                point_cloud_range=[-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]),
+            dict(
+                type='VADObjectNameFilter',
+                classes=[
+                    'car', 'van', 'truck', 'bicycle', 'traffic_sign',
+                    'traffic_cone', 'traffic_light', 'pedestrian', 'others'
+                ]),
+            dict(
+                type='LoadAnnoatationVQA',
+                base_desc_path=None,
+                tokenizer='ckpts/tiny_llama/',
+                max_length=2048,
+                use_gen_token=True,
+                planning_qa_only=True,
+                planning_qa_last=True),
+            dict(
+                type='ResizeCropFlipRotImage',
+                data_aug_conf=dict(
+                    resize_lim=(0.37, 0.45),
+                    final_dim=(320, 640),
+                    bot_pct_lim=(0.0, 0.0),
+                    rot_lim=(0.0, 0.0),
+                    H=900,
+                    W=1600,
+                    rand_flip=False),
+                training=True),
+            dict(
+                type='ResizeMultiview3D',
+                img_scale=(640, 640),
+                keep_ratio=False,
+                multiscale_mode='value'),
+            dict(type='PadMultiViewImage', size_divisor=32),
+            dict(
+                type='NormalizeMultiviewImage',
+                mean=[123.675, 116.28, 103.53],
+                std=[58.395, 57.12, 57.375],
+                to_rgb=True),
+            dict(
+                type='PETRFormatBundle3D',
+                class_names=[
+                    'car', 'van', 'truck', 'bicycle', 'traffic_sign',
+                    'traffic_cone', 'traffic_light', 'pedestrian', 'others'
+                ],
+                collect_keys=[
+                    'lidar2img', 'cam_intrinsic', 'timestamp', 'ego_pose',
+                    'ego_pose_inv', 'command'
+                ]),
+            dict(
+                type='CustomCollect3D',
+                keys=[
+                    'gt_bboxes_3d', 'gt_labels_3d', 'img', 'ego_his_trajs',
+                    'input_ids', 'gt_attr_labels', 'ego_fut_trajs',
+                    'ego_fut_masks', 'ego_fut_cmd', 'ego_lcf_feat',
+                    'vlm_labels', 'can_bus', 'traffic_state_mask',
+                    'traffic_state', 'lidar2img', 'cam_intrinsic', 'timestamp',
+                    'ego_pose', 'ego_pose_inv', 'command'
+                ])
+        ],
+        classes=[
+            'car', 'van', 'truck', 'bicycle', 'traffic_sign', 'traffic_cone',
+            'traffic_light', 'pedestrian', 'others'
+        ],
+        modality=dict(
+            use_lidar=False,
+            use_camera=True,
+            use_radar=False,
+            use_map=False,
+            use_external=True),
+        test_mode=False,
+        box_type_3d='LiDAR',
+        seq_mode=True,
+        seq_split_num=1,
+        name_mapping=dict({
+            'vehicle.bh.crossbike':
+            'bicycle',
+            'vehicle.diamondback.century':
+            'bicycle',
+            'vehicle.gazelle.omafiets':
+            'bicycle',
+            'vehicle.audi.etron':
+            'car',
+            'vehicle.chevrolet.impala':
+            'car',
+            'vehicle.dodge.charger_2020':
+            'car',
+            'vehicle.dodge.charger_police':
+            'car',
+            'vehicle.dodge.charger_police_2020':
+            'car',
+            'vehicle.lincoln.mkz_2017':
+            'car',
+            'vehicle.lincoln.mkz_2020':
+            'car',
+            'vehicle.mini.cooper_s_2021':
+            'car',
+            'vehicle.mercedes.coupe_2020':
+            'car',
+            'vehicle.ford.mustang':
+            'car',
+            'vehicle.nissan.patrol_2021':
+            'car',
+            'vehicle.audi.tt':
+            'car',
+            'vehicle.ford.crown':
+            'car',
+            'vehicle.tesla.model3':
+            'car',
+            '/Game/Carla/Static/Car/4Wheeled/ParkedVehicles/FordCrown/SM_FordCrown_parked.SM_FordCrown_parked':
+            'car',
+            '/Game/Carla/Static/Car/4Wheeled/ParkedVehicles/Charger/SM_ChargerParked.SM_ChargerParked':
+            'car',
+            '/Game/Carla/Static/Car/4Wheeled/ParkedVehicles/Lincoln/SM_LincolnParked.SM_LincolnParked':
+            'car',
+            '/Game/Carla/Static/Car/4Wheeled/ParkedVehicles/MercedesCCC/SM_MercedesCCC_Parked.SM_MercedesCCC_Parked':
+            'car',
+            '/Game/Carla/Static/Car/4Wheeled/ParkedVehicles/Mini2021/SM_Mini2021_parked.SM_Mini2021_parked':
+            'car',
+            '/Game/Carla/Static/Car/4Wheeled/ParkedVehicles/NissanPatrol2021/SM_NissanPatrol2021_parked.SM_NissanPatrol2021_parked':
+            'car',
+            '/Game/Carla/Static/Car/4Wheeled/ParkedVehicles/TeslaM3/SM_TeslaM3_parked.SM_TeslaM3_parked':
+            'car',
+            '/Game/Carla/Static/Car/4Wheeled/ParkedVehicles/VolkswagenT2/SM_VolkswagenT2_2021_Parked.SM_VolkswagenT2_2021_Parked':
+            'van',
+            'vehicle.ford.ambulance':
+            'van',
+            'vehicle.carlamotors.firetruck':
+            'truck',
+            'traffic.speed_limit.30':
+            'traffic_sign',
+            'traffic.speed_limit.40':
+            'traffic_sign',
+            'traffic.speed_limit.50':
+            'traffic_sign',
+            'traffic.speed_limit.60':
+            'traffic_sign',
+            'traffic.speed_limit.90':
+            'traffic_sign',
+            'traffic.speed_limit.120':
+            'traffic_sign',
+            'traffic.stop':
+            'traffic_sign',
+            'traffic.yield':
+            'traffic_sign',
+            'traffic.traffic_light':
+            'traffic_light',
+            'static.prop.warningconstruction':
+            'traffic_cone',
+            'static.prop.warningaccident':
+            'traffic_cone',
+            'static.prop.trafficwarning':
+            'traffic_cone',
+            'static.prop.constructioncone':
+            'traffic_cone',
+            'walker.pedestrian.0001':
+            'pedestrian',
+            'walker.pedestrian.0003':
+            'pedestrian',
+            'walker.pedestrian.0004':
+            'pedestrian',
+            'walker.pedestrian.0005':
+            'pedestrian',
+            'walker.pedestrian.0007':
+            'pedestrian',
+            'walker.pedestrian.0010':
+            'pedestrian',
+            'walker.pedestrian.0013':
+            'pedestrian',
+            'walker.pedestrian.0014':
+            'pedestrian',
+            'walker.pedestrian.0015':
+            'pedestrian',
+            'walker.pedestrian.0016':
+            'pedestrian',
+            'walker.pedestrian.0017':
+            'pedestrian',
+            'walker.pedestrian.0018':
+            'pedestrian',
+            'walker.pedestrian.0019':
+            'pedestrian',
+            'walker.pedestrian.0020':
+            'pedestrian',
+            'walker.pedestrian.0021':
+            'pedestrian',
+            'walker.pedestrian.0022':
+            'pedestrian',
+            'walker.pedestrian.0025':
+            'pedestrian',
+            'walker.pedestrian.0027':
+            'pedestrian',
+            'walker.pedestrian.0030':
+            'pedestrian',
+            'walker.pedestrian.0031':
+            'pedestrian',
+            'walker.pedestrian.0032':
+            'pedestrian',
+            'walker.pedestrian.0034':
+            'pedestrian',
+            'walker.pedestrian.0035':
+            'pedestrian',
+            'walker.pedestrian.0041':
+            'pedestrian',
+            'walker.pedestrian.0042':
+            'pedestrian',
+            'walker.pedestrian.0046':
+            'pedestrian',
+            'walker.pedestrian.0047':
+            'pedestrian',
+            'static.prop.dirtdebris01':
+            'others',
+            'static.prop.dirtdebris02':
+            'others'
+        }),
+        map_root='data/bench2drive/maps',
+        map_file='data/infos/b2d_map_infos.pkl',
+        queue_length=1,
+        past_frames=2,
+        future_frames=6,
+        point_cloud_range=[-51.2, -51.2, -5.0, 51.2, 51.2, 3.0],
+        polyline_points_num=11),
+    val=dict(
+        type='B2DOrionDataset',
+        data_root='data/bench2drive',
+        ann_file='data/infos/b2d_infos_val.pkl',
+        pipeline=[
+            dict(type='LoadMultiViewImageFromFilesInCeph', to_float32=True),
+            dict(
+                type='LoadAnnotations3D',
+                with_bbox_3d=True,
+                with_label_3d=True,
+                with_attr_label=True),
+            dict(
+                type='VADObjectRangeFilter',
+                point_cloud_range=[-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]),
+            dict(
+                type='VADObjectNameFilter',
+                classes=[
+                    'car', 'van', 'truck', 'bicycle', 'traffic_sign',
+                    'traffic_cone', 'traffic_light', 'pedestrian', 'others'
+                ]),
+            dict(
+                type='ResizeCropFlipRotImage',
+                data_aug_conf=dict(
+                    resize_lim=(0.37, 0.45),
+                    final_dim=(320, 640),
+                    bot_pct_lim=(0.0, 0.0),
+                    rot_lim=(0.0, 0.0),
+                    H=900,
+                    W=1600,
+                    rand_flip=False),
+                training=False),
+            dict(
+                type='ResizeMultiview3D',
+                img_scale=(640, 640),
+                keep_ratio=False,
+                multiscale_mode='value'),
+            dict(
+                type='NormalizeMultiviewImage',
+                mean=[123.675, 116.28, 103.53],
+                std=[58.395, 57.12, 57.375],
+                to_rgb=True),
+            dict(type='PadMultiViewImage', size_divisor=32),
+            dict(
+                type='LoadAnnoatationCriticalVQATest',
+                load_type=['critical_qa'],
+                tokenizer='ckpts/tiny_llama/',
+                use_gen_token=True,
+                max_length=2048),
+            dict(
+                type='MultiScaleFlipAug3D',
+                img_scale=(1333, 800),
+                pts_scale_ratio=1,
+                flip=False,
+                transforms=[
+                    dict(
+                        type='PETRFormatBundle3D',
+                        collect_keys=[
+                            'lidar2img', 'cam_intrinsic', 'timestamp',
+                            'ego_pose', 'ego_pose_inv', 'command'
+                        ],
+                        class_names=[
+                            'car', 'van', 'truck', 'bicycle', 'traffic_sign',
+                            'traffic_cone', 'traffic_light', 'pedestrian',
+                            'others'
+                        ],
+                        with_label=False),
+                    dict(
+                        type='CustomCollect3D',
+                        keys=[
+                            'gt_bboxes_3d', 'gt_labels_3d', 'img',
+                            'ego_his_trajs', 'input_ids', 'gt_attr_labels',
+                            'ego_fut_trajs', 'ego_fut_masks', 'ego_fut_cmd',
+                            'ego_lcf_feat', 'vlm_labels', 'can_bus',
+                            'fut_valid_flag', 'lidar2img', 'cam_intrinsic',
+                            'timestamp', 'ego_pose', 'ego_pose_inv', 'command'
+                        ])
+                ])
+        ],
+        classes=[
+            'car', 'van', 'truck', 'bicycle', 'traffic_sign', 'traffic_cone',
+            'traffic_light', 'pedestrian', 'others'
+        ],
+        modality=dict(
+            use_lidar=False,
+            use_camera=True,
+            use_radar=False,
+            use_map=False,
+            use_external=True),
+        test_mode=True,
+        box_type_3d='LiDAR',
+        name_mapping=dict({
+            'vehicle.bh.crossbike':
+            'bicycle',
+            'vehicle.diamondback.century':
+            'bicycle',
+            'vehicle.gazelle.omafiets':
+            'bicycle',
+            'vehicle.audi.etron':
+            'car',
+            'vehicle.chevrolet.impala':
+            'car',
+            'vehicle.dodge.charger_2020':
+            'car',
+            'vehicle.dodge.charger_police':
+            'car',
+            'vehicle.dodge.charger_police_2020':
+            'car',
+            'vehicle.lincoln.mkz_2017':
+            'car',
+            'vehicle.lincoln.mkz_2020':
+            'car',
+            'vehicle.mini.cooper_s_2021':
+            'car',
+            'vehicle.mercedes.coupe_2020':
+            'car',
+            'vehicle.ford.mustang':
+            'car',
+            'vehicle.nissan.patrol_2021':
+            'car',
+            'vehicle.audi.tt':
+            'car',
+            'vehicle.ford.crown':
+            'car',
+            'vehicle.tesla.model3':
+            'car',
+            '/Game/Carla/Static/Car/4Wheeled/ParkedVehicles/FordCrown/SM_FordCrown_parked.SM_FordCrown_parked':
+            'car',
+            '/Game/Carla/Static/Car/4Wheeled/ParkedVehicles/Charger/SM_ChargerParked.SM_ChargerParked':
+            'car',
+            '/Game/Carla/Static/Car/4Wheeled/ParkedVehicles/Lincoln/SM_LincolnParked.SM_LincolnParked':
+            'car',
+            '/Game/Carla/Static/Car/4Wheeled/ParkedVehicles/MercedesCCC/SM_MercedesCCC_Parked.SM_MercedesCCC_Parked':
+            'car',
+            '/Game/Carla/Static/Car/4Wheeled/ParkedVehicles/Mini2021/SM_Mini2021_parked.SM_Mini2021_parked':
+            'car',
+            '/Game/Carla/Static/Car/4Wheeled/ParkedVehicles/NissanPatrol2021/SM_NissanPatrol2021_parked.SM_NissanPatrol2021_parked':
+            'car',
+            '/Game/Carla/Static/Car/4Wheeled/ParkedVehicles/TeslaM3/SM_TeslaM3_parked.SM_TeslaM3_parked':
+            'car',
+            '/Game/Carla/Static/Car/4Wheeled/ParkedVehicles/VolkswagenT2/SM_VolkswagenT2_2021_Parked.SM_VolkswagenT2_2021_Parked':
+            'van',
+            'vehicle.ford.ambulance':
+            'van',
+            'vehicle.carlamotors.firetruck':
+            'truck',
+            'traffic.speed_limit.30':
+            'traffic_sign',
+            'traffic.speed_limit.40':
+            'traffic_sign',
+            'traffic.speed_limit.50':
+            'traffic_sign',
+            'traffic.speed_limit.60':
+            'traffic_sign',
+            'traffic.speed_limit.90':
+            'traffic_sign',
+            'traffic.speed_limit.120':
+            'traffic_sign',
+            'traffic.stop':
+            'traffic_sign',
+            'traffic.yield':
+            'traffic_sign',
+            'traffic.traffic_light':
+            'traffic_light',
+            'static.prop.warningconstruction':
+            'traffic_cone',
+            'static.prop.warningaccident':
+            'traffic_cone',
+            'static.prop.trafficwarning':
+            'traffic_cone',
+            'static.prop.constructioncone':
+            'traffic_cone',
+            'walker.pedestrian.0001':
+            'pedestrian',
+            'walker.pedestrian.0003':
+            'pedestrian',
+            'walker.pedestrian.0004':
+            'pedestrian',
+            'walker.pedestrian.0005':
+            'pedestrian',
+            'walker.pedestrian.0007':
+            'pedestrian',
+            'walker.pedestrian.0010':
+            'pedestrian',
+            'walker.pedestrian.0013':
+            'pedestrian',
+            'walker.pedestrian.0014':
+            'pedestrian',
+            'walker.pedestrian.0015':
+            'pedestrian',
+            'walker.pedestrian.0016':
+            'pedestrian',
+            'walker.pedestrian.0017':
+            'pedestrian',
+            'walker.pedestrian.0018':
+            'pedestrian',
+            'walker.pedestrian.0019':
+            'pedestrian',
+            'walker.pedestrian.0020':
+            'pedestrian',
+            'walker.pedestrian.0021':
+            'pedestrian',
+            'walker.pedestrian.0022':
+            'pedestrian',
+            'walker.pedestrian.0025':
+            'pedestrian',
+            'walker.pedestrian.0027':
+            'pedestrian',
+            'walker.pedestrian.0030':
+            'pedestrian',
+            'walker.pedestrian.0031':
+            'pedestrian',
+            'walker.pedestrian.0032':
+            'pedestrian',
+            'walker.pedestrian.0034':
+            'pedestrian',
+            'walker.pedestrian.0035':
+            'pedestrian',
+            'walker.pedestrian.0041':
+            'pedestrian',
+            'walker.pedestrian.0042':
+            'pedestrian',
+            'walker.pedestrian.0046':
+            'pedestrian',
+            'walker.pedestrian.0047':
+            'pedestrian',
+            'static.prop.dirtdebris01':
+            'others',
+            'static.prop.dirtdebris02':
+            'others'
+        }),
+        map_root='data/bench2drive/maps',
+        map_file='data/infos/b2d_map_infos.pkl',
+        queue_length=1,
+        past_frames=2,
+        future_frames=6,
+        point_cloud_range=[-51.2, -51.2, -5.0, 51.2, 51.2, 3.0],
+        polyline_points_num=11,
+        eval_cfg=dict(
+            dist_ths=[0.5, 1.0, 2.0, 4.0],
+            dist_th_tp=2.0,
+            min_recall=0.1,
+            min_precision=0.1,
+            mean_ap_weight=5,
+            class_names=[
+                'car', 'van', 'truck', 'bicycle', 'traffic_sign',
+                'traffic_cone', 'traffic_light', 'pedestrian'
+            ],
+            tp_metrics=['trans_err', 'scale_err', 'orient_err', 'vel_err'],
+            err_name_maping=dict(
+                trans_err='mATE',
+                scale_err='mASE',
+                orient_err='mAOE',
+                vel_err='mAVE',
+                attr_err='mAAE'),
+            class_range=dict(
+                car=(50, 50),
+                van=(50, 50),
+                truck=(50, 50),
+                bicycle=(40, 40),
+                traffic_sign=(30, 30),
+                traffic_cone=(30, 30),
+                traffic_light=(30, 30),
+                pedestrian=(40, 40)))),
+    test=dict(
+        type='B2DOrionDataset',
+        data_root='data/bench2drive',
+        ann_file='data/infos/b2d_infos_val.pkl',
+        pipeline=[
+            dict(type='LoadMultiViewImageFromFilesInCeph', to_float32=True),
+            dict(
+                type='LoadAnnotations3D',
+                with_bbox_3d=True,
+                with_label_3d=True,
+                with_attr_label=True),
+            dict(
+                type='VADObjectRangeFilter',
+                point_cloud_range=[-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]),
+            dict(
+                type='VADObjectNameFilter',
+                classes=[
+                    'car', 'van', 'truck', 'bicycle', 'traffic_sign',
+                    'traffic_cone', 'traffic_light', 'pedestrian', 'others'
+                ]),
+            dict(
+                type='ResizeCropFlipRotImage',
+                data_aug_conf=dict(
+                    resize_lim=(0.37, 0.45),
+                    final_dim=(320, 640),
+                    bot_pct_lim=(0.0, 0.0),
+                    rot_lim=(0.0, 0.0),
+                    H=900,
+                    W=1600,
+                    rand_flip=False),
+                training=False),
+            dict(
+                type='ResizeMultiview3D',
+                img_scale=(640, 640),
+                keep_ratio=False,
+                multiscale_mode='value'),
+            dict(
+                type='NormalizeMultiviewImage',
+                mean=[123.675, 116.28, 103.53],
+                std=[58.395, 57.12, 57.375],
+                to_rgb=True),
+            dict(type='PadMultiViewImage', size_divisor=32),
+            dict(
+                type='LoadAnnoatationCriticalVQATest',
+                load_type=['critical_qa'],
+                tokenizer='ckpts/tiny_llama/',
+                use_gen_token=True,
+                max_length=2048),
+            dict(
+                type='MultiScaleFlipAug3D',
+                img_scale=(1333, 800),
+                pts_scale_ratio=1,
+                flip=False,
+                transforms=[
+                    dict(
+                        type='PETRFormatBundle3D',
+                        collect_keys=[
+                            'lidar2img', 'cam_intrinsic', 'timestamp',
+                            'ego_pose', 'ego_pose_inv', 'command'
+                        ],
+                        class_names=[
+                            'car', 'van', 'truck', 'bicycle', 'traffic_sign',
+                            'traffic_cone', 'traffic_light', 'pedestrian',
+                            'others'
+                        ],
+                        with_label=False),
+                    dict(
+                        type='CustomCollect3D',
+                        keys=[
+                            'gt_bboxes_3d', 'gt_labels_3d', 'img',
+                            'ego_his_trajs', 'input_ids', 'gt_attr_labels',
+                            'ego_fut_trajs', 'ego_fut_masks', 'ego_fut_cmd',
+                            'ego_lcf_feat', 'vlm_labels', 'can_bus',
+                            'fut_valid_flag', 'lidar2img', 'cam_intrinsic',
+                            'timestamp', 'ego_pose', 'ego_pose_inv', 'command'
+                        ])
+                ])
+        ],
+        classes=[
+            'car', 'van', 'truck', 'bicycle', 'traffic_sign', 'traffic_cone',
+            'traffic_light', 'pedestrian', 'others'
+        ],
+        modality=dict(
+            use_lidar=False,
+            use_camera=True,
+            use_radar=False,
+            use_map=False,
+            use_external=True),
+        test_mode=True,
+        box_type_3d='LiDAR',
+        name_mapping=dict({
+            'vehicle.bh.crossbike':
+            'bicycle',
+            'vehicle.diamondback.century':
+            'bicycle',
+            'vehicle.gazelle.omafiets':
+            'bicycle',
+            'vehicle.audi.etron':
+            'car',
+            'vehicle.chevrolet.impala':
+            'car',
+            'vehicle.dodge.charger_2020':
+            'car',
+            'vehicle.dodge.charger_police':
+            'car',
+            'vehicle.dodge.charger_police_2020':
+            'car',
+            'vehicle.lincoln.mkz_2017':
+            'car',
+            'vehicle.lincoln.mkz_2020':
+            'car',
+            'vehicle.mini.cooper_s_2021':
+            'car',
+            'vehicle.mercedes.coupe_2020':
+            'car',
+            'vehicle.ford.mustang':
+            'car',
+            'vehicle.nissan.patrol_2021':
+            'car',
+            'vehicle.audi.tt':
+            'car',
+            'vehicle.ford.crown':
+            'car',
+            'vehicle.tesla.model3':
+            'car',
+            '/Game/Carla/Static/Car/4Wheeled/ParkedVehicles/FordCrown/SM_FordCrown_parked.SM_FordCrown_parked':
+            'car',
+            '/Game/Carla/Static/Car/4Wheeled/ParkedVehicles/Charger/SM_ChargerParked.SM_ChargerParked':
+            'car',
+            '/Game/Carla/Static/Car/4Wheeled/ParkedVehicles/Lincoln/SM_LincolnParked.SM_LincolnParked':
+            'car',
+            '/Game/Carla/Static/Car/4Wheeled/ParkedVehicles/MercedesCCC/SM_MercedesCCC_Parked.SM_MercedesCCC_Parked':
+            'car',
+            '/Game/Carla/Static/Car/4Wheeled/ParkedVehicles/Mini2021/SM_Mini2021_parked.SM_Mini2021_parked':
+            'car',
+            '/Game/Carla/Static/Car/4Wheeled/ParkedVehicles/NissanPatrol2021/SM_NissanPatrol2021_parked.SM_NissanPatrol2021_parked':
+            'car',
+            '/Game/Carla/Static/Car/4Wheeled/ParkedVehicles/TeslaM3/SM_TeslaM3_parked.SM_TeslaM3_parked':
+            'car',
+            '/Game/Carla/Static/Car/4Wheeled/ParkedVehicles/VolkswagenT2/SM_VolkswagenT2_2021_Parked.SM_VolkswagenT2_2021_Parked':
+            'van',
+            'vehicle.ford.ambulance':
+            'van',
+            'vehicle.carlamotors.firetruck':
+            'truck',
+            'traffic.speed_limit.30':
+            'traffic_sign',
+            'traffic.speed_limit.40':
+            'traffic_sign',
+            'traffic.speed_limit.50':
+            'traffic_sign',
+            'traffic.speed_limit.60':
+            'traffic_sign',
+            'traffic.speed_limit.90':
+            'traffic_sign',
+            'traffic.speed_limit.120':
+            'traffic_sign',
+            'traffic.stop':
+            'traffic_sign',
+            'traffic.yield':
+            'traffic_sign',
+            'traffic.traffic_light':
+            'traffic_light',
+            'static.prop.warningconstruction':
+            'traffic_cone',
+            'static.prop.warningaccident':
+            'traffic_cone',
+            'static.prop.trafficwarning':
+            'traffic_cone',
+            'static.prop.constructioncone':
+            'traffic_cone',
+            'walker.pedestrian.0001':
+            'pedestrian',
+            'walker.pedestrian.0003':
+            'pedestrian',
+            'walker.pedestrian.0004':
+            'pedestrian',
+            'walker.pedestrian.0005':
+            'pedestrian',
+            'walker.pedestrian.0007':
+            'pedestrian',
+            'walker.pedestrian.0010':
+            'pedestrian',
+            'walker.pedestrian.0013':
+            'pedestrian',
+            'walker.pedestrian.0014':
+            'pedestrian',
+            'walker.pedestrian.0015':
+            'pedestrian',
+            'walker.pedestrian.0016':
+            'pedestrian',
+            'walker.pedestrian.0017':
+            'pedestrian',
+            'walker.pedestrian.0018':
+            'pedestrian',
+            'walker.pedestrian.0019':
+            'pedestrian',
+            'walker.pedestrian.0020':
+            'pedestrian',
+            'walker.pedestrian.0021':
+            'pedestrian',
+            'walker.pedestrian.0022':
+            'pedestrian',
+            'walker.pedestrian.0025':
+            'pedestrian',
+            'walker.pedestrian.0027':
+            'pedestrian',
+            'walker.pedestrian.0030':
+            'pedestrian',
+            'walker.pedestrian.0031':
+            'pedestrian',
+            'walker.pedestrian.0032':
+            'pedestrian',
+            'walker.pedestrian.0034':
+            'pedestrian',
+            'walker.pedestrian.0035':
+            'pedestrian',
+            'walker.pedestrian.0041':
+            'pedestrian',
+            'walker.pedestrian.0042':
+            'pedestrian',
+            'walker.pedestrian.0046':
+            'pedestrian',
+            'walker.pedestrian.0047':
+            'pedestrian',
+            'static.prop.dirtdebris01':
+            'others',
+            'static.prop.dirtdebris02':
+            'others'
+        }),
+        map_root='data/bench2drive/maps',
+        map_file='data/infos/b2d_map_infos.pkl',
+        queue_length=1,
+        past_frames=2,
+        future_frames=6,
+        point_cloud_range=[-51.2, -51.2, -5.0, 51.2, 51.2, 3.0],
+        polyline_points_num=11,
+        eval_cfg=dict(
+            dist_ths=[0.5, 1.0, 2.0, 4.0],
+            dist_th_tp=2.0,
+            min_recall=0.1,
+            min_precision=0.1,
+            mean_ap_weight=5,
+            class_names=[
+                'car', 'van', 'truck', 'bicycle', 'traffic_sign',
+                'traffic_cone', 'traffic_light', 'pedestrian'
+            ],
+            tp_metrics=['trans_err', 'scale_err', 'orient_err', 'vel_err'],
+            err_name_maping=dict(
+                trans_err='mATE',
+                scale_err='mASE',
+                orient_err='mAOE',
+                vel_err='mAVE',
+                attr_err='mAAE'),
+            class_range=dict(
+                car=(50, 50),
+                van=(50, 50),
+                truck=(50, 50),
+                bicycle=(40, 40),
+                traffic_sign=(30, 30),
+                traffic_cone=(30, 30),
+                traffic_light=(30, 30),
+                pedestrian=(40, 40)))),
+    shuffler_sampler=dict(
+        type='InfiniteGroupEachSampleInBatchSampler',
+        seq_split_num=10,
+        warmup_split_num=80,
+        num_iters_to_seq=14673),
+    nonshuffler_sampler=dict(type='DistributedSampler'))
+evaluation = dict(
+    interval=102711,
+    pipeline=[
+        dict(type='LoadMultiViewImageFromFilesInCeph', to_float32=True),
+        dict(
+            type='LoadAnnotations3D',
+            with_bbox_3d=True,
+            with_label_3d=True,
+            with_attr_label=True),
+        dict(
+            type='VADObjectRangeFilter',
+            point_cloud_range=[-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]),
+        dict(
+            type='VADObjectNameFilter',
+            classes=[
+                'car', 'van', 'truck', 'bicycle', 'traffic_sign',
+                'traffic_cone', 'traffic_light', 'pedestrian', 'others'
+            ]),
+        dict(
+            type='ResizeCropFlipRotImage',
+            data_aug_conf=dict(
+                resize_lim=(0.37, 0.45),
+                final_dim=(320, 640),
+                bot_pct_lim=(0.0, 0.0),
+                rot_lim=(0.0, 0.0),
+                H=900,
+                W=1600,
+                rand_flip=False),
+            training=False),
+        dict(
+            type='ResizeMultiview3D',
+            img_scale=(640, 640),
+            keep_ratio=False,
+            multiscale_mode='value'),
+        dict(
+            type='NormalizeMultiviewImage',
+            mean=[123.675, 116.28, 103.53],
+            std=[58.395, 57.12, 57.375],
+            to_rgb=True),
+        dict(type='PadMultiViewImage', size_divisor=32),
+        dict(
+            type='LoadAnnoatationCriticalVQATest',
+            load_type=['critical_qa'],
+            tokenizer='ckpts/tiny_llama/',
+            use_gen_token=True,
+            max_length=2048),
+        dict(
+            type='MultiScaleFlipAug3D',
+            img_scale=(1333, 800),
+            pts_scale_ratio=1,
+            flip=False,
+            transforms=[
+                dict(
+                    type='PETRFormatBundle3D',
+                    collect_keys=[
+                        'lidar2img', 'cam_intrinsic', 'timestamp', 'ego_pose',
+                        'ego_pose_inv', 'command'
+                    ],
+                    class_names=[
+                        'car', 'van', 'truck', 'bicycle', 'traffic_sign',
+                        'traffic_cone', 'traffic_light', 'pedestrian', 'others'
+                    ],
+                    with_label=False),
+                dict(
+                    type='CustomCollect3D',
+                    keys=[
+                        'gt_bboxes_3d', 'gt_labels_3d', 'img', 'ego_his_trajs',
+                        'input_ids', 'gt_attr_labels', 'ego_fut_trajs',
+                        'ego_fut_masks', 'ego_fut_cmd', 'ego_lcf_feat',
+                        'vlm_labels', 'can_bus', 'fut_valid_flag', 'lidar2img',
+                        'cam_intrinsic', 'timestamp', 'ego_pose',
+                        'ego_pose_inv', 'command'
+                    ])
+            ])
+    ])
+checkpoint_config = dict(interval=14673, max_keep_ckpts=3)
+log_config = dict(
+    interval=10,
+    hooks=[dict(type='TextLoggerHook'),
+           dict(type='TensorboardLoggerHook')])
+dist_params = dict(backend='nccl')
+log_level = 'INFO'
+work_dir = 'adzoo/orion/work_dirs/orion_stage2_train/'
+load_from = None
+resume_from = None
+workflow = [('train', 1)]
+opencv_num_threads = 0
+mp_start_method = 'fork'
+backbone_norm_cfg = dict(type='LN', requires_grad=True)
+voxel_size = [0.2, 0.2, 8]
+img_norm_cfg = dict(
+    mean=[123.675, 116.28, 103.53], std=[58.395, 57.12, 57.375], to_rgb=True)
+map_classes = [
+    'Broken', 'Solid', 'SolidSolid', 'Center', 'TrafficLight', 'StopSign'
+]
+queue_length = 1
+map_fixed_ptsnum_per_gt_line = 11
+map_eval_use_same_gt_sample_num_flag = True
+map_num_classes = 6
+past_frames = 2
+future_frames = 6
+_dim_ = 256
+_pos_dim_ = 128
+_ffn_dim_ = 512
+ida_aug_conf = dict(
+    resize_lim=(0.37, 0.45),
+    final_dim=(320, 640),
+    bot_pct_lim=(0.0, 0.0),
+    rot_lim=(0.0, 0.0),
+    H=900,
+    W=1600,
+    rand_flip=False)
+occflow_grid_conf = dict(
+    xbound=[-50.0, 50.0, 0.5],
+    ybound=[-50.0, 50.0, 0.5],
+    zbound=[-10.0, 10.0, 20.0])
+NameMapping = dict({
+    'vehicle.bh.crossbike':
+    'bicycle',
+    'vehicle.diamondback.century':
+    'bicycle',
+    'vehicle.gazelle.omafiets':
+    'bicycle',
+    'vehicle.audi.etron':
+    'car',
+    'vehicle.chevrolet.impala':
+    'car',
+    'vehicle.dodge.charger_2020':
+    'car',
+    'vehicle.dodge.charger_police':
+    'car',
+    'vehicle.dodge.charger_police_2020':
+    'car',
+    'vehicle.lincoln.mkz_2017':
+    'car',
+    'vehicle.lincoln.mkz_2020':
+    'car',
+    'vehicle.mini.cooper_s_2021':
+    'car',
+    'vehicle.mercedes.coupe_2020':
+    'car',
+    'vehicle.ford.mustang':
+    'car',
+    'vehicle.nissan.patrol_2021':
+    'car',
+    'vehicle.audi.tt':
+    'car',
+    'vehicle.ford.crown':
+    'car',
+    'vehicle.tesla.model3':
+    'car',
+    '/Game/Carla/Static/Car/4Wheeled/ParkedVehicles/FordCrown/SM_FordCrown_parked.SM_FordCrown_parked':
+    'car',
+    '/Game/Carla/Static/Car/4Wheeled/ParkedVehicles/Charger/SM_ChargerParked.SM_ChargerParked':
+    'car',
+    '/Game/Carla/Static/Car/4Wheeled/ParkedVehicles/Lincoln/SM_LincolnParked.SM_LincolnParked':
+    'car',
+    '/Game/Carla/Static/Car/4Wheeled/ParkedVehicles/MercedesCCC/SM_MercedesCCC_Parked.SM_MercedesCCC_Parked':
+    'car',
+    '/Game/Carla/Static/Car/4Wheeled/ParkedVehicles/Mini2021/SM_Mini2021_parked.SM_Mini2021_parked':
+    'car',
+    '/Game/Carla/Static/Car/4Wheeled/ParkedVehicles/NissanPatrol2021/SM_NissanPatrol2021_parked.SM_NissanPatrol2021_parked':
+    'car',
+    '/Game/Carla/Static/Car/4Wheeled/ParkedVehicles/TeslaM3/SM_TeslaM3_parked.SM_TeslaM3_parked':
+    'car',
+    '/Game/Carla/Static/Car/4Wheeled/ParkedVehicles/VolkswagenT2/SM_VolkswagenT2_2021_Parked.SM_VolkswagenT2_2021_Parked':
+    'van',
+    'vehicle.ford.ambulance':
+    'van',
+    'vehicle.carlamotors.firetruck':
+    'truck',
+    'traffic.speed_limit.30':
+    'traffic_sign',
+    'traffic.speed_limit.40':
+    'traffic_sign',
+    'traffic.speed_limit.50':
+    'traffic_sign',
+    'traffic.speed_limit.60':
+    'traffic_sign',
+    'traffic.speed_limit.90':
+    'traffic_sign',
+    'traffic.speed_limit.120':
+    'traffic_sign',
+    'traffic.stop':
+    'traffic_sign',
+    'traffic.yield':
+    'traffic_sign',
+    'traffic.traffic_light':
+    'traffic_light',
+    'static.prop.warningconstruction':
+    'traffic_cone',
+    'static.prop.warningaccident':
+    'traffic_cone',
+    'static.prop.trafficwarning':
+    'traffic_cone',
+    'static.prop.constructioncone':
+    'traffic_cone',
+    'walker.pedestrian.0001':
+    'pedestrian',
+    'walker.pedestrian.0003':
+    'pedestrian',
+    'walker.pedestrian.0004':
+    'pedestrian',
+    'walker.pedestrian.0005':
+    'pedestrian',
+    'walker.pedestrian.0007':
+    'pedestrian',
+    'walker.pedestrian.0010':
+    'pedestrian',
+    'walker.pedestrian.0013':
+    'pedestrian',
+    'walker.pedestrian.0014':
+    'pedestrian',
+    'walker.pedestrian.0015':
+    'pedestrian',
+    'walker.pedestrian.0016':
+    'pedestrian',
+    'walker.pedestrian.0017':
+    'pedestrian',
+    'walker.pedestrian.0018':
+    'pedestrian',
+    'walker.pedestrian.0019':
+    'pedestrian',
+    'walker.pedestrian.0020':
+    'pedestrian',
+    'walker.pedestrian.0021':
+    'pedestrian',
+    'walker.pedestrian.0022':
+    'pedestrian',
+    'walker.pedestrian.0025':
+    'pedestrian',
+    'walker.pedestrian.0027':
+    'pedestrian',
+    'walker.pedestrian.0030':
+    'pedestrian',
+    'walker.pedestrian.0031':
+    'pedestrian',
+    'walker.pedestrian.0032':
+    'pedestrian',
+    'walker.pedestrian.0034':
+    'pedestrian',
+    'walker.pedestrian.0035':
+    'pedestrian',
+    'walker.pedestrian.0041':
+    'pedestrian',
+    'walker.pedestrian.0042':
+    'pedestrian',
+    'walker.pedestrian.0046':
+    'pedestrian',
+    'walker.pedestrian.0047':
+    'pedestrian',
+    'static.prop.dirtdebris01':
+    'others',
+    'static.prop.dirtdebris02':
+    'others'
+})
+eval_cfg = dict(
+    dist_ths=[0.5, 1.0, 2.0, 4.0],
+    dist_th_tp=2.0,
+    min_recall=0.1,
+    min_precision=0.1,
+    mean_ap_weight=5,
+    class_names=[
+        'car', 'van', 'truck', 'bicycle', 'traffic_sign', 'traffic_cone',
+        'traffic_light', 'pedestrian'
+    ],
+    tp_metrics=['trans_err', 'scale_err', 'orient_err', 'vel_err'],
+    err_name_maping=dict(
+        trans_err='mATE',
+        scale_err='mASE',
+        orient_err='mAOE',
+        vel_err='mAVE',
+        attr_err='mAAE'),
+    class_range=dict(
+        car=(50, 50),
+        van=(50, 50),
+        truck=(50, 50),
+        bicycle=(40, 40),
+        traffic_sign=(30, 30),
+        traffic_cone=(30, 30),
+        traffic_light=(30, 30),
+        pedestrian=(40, 40)))
+use_memory = True
+num_gpus = 8
+batch_size = 2
+num_iters_per_epoch = 14673
+num_epochs = 6
+llm_path = 'ckpts/tiny_llama/'
+use_gen_token = True
+use_col_loss = True
+collect_keys = [
+    'lidar2img', 'cam_intrinsic', 'timestamp', 'ego_pose', 'ego_pose_inv',
+    'command'
+]
+model = dict(
+    type='Orion',
+    save_path='./results_planning_only/',
+    use_grid_mask=True,
+    frozen=False,
+    use_lora=True,
+    tokenizer='ckpts/tiny_llama/',
+    lm_head='ckpts/tiny_llama/',
+    use_gen_token=True,
+    use_diff_decoder=False,
+    use_col_loss=True,
+    loss_plan_reg=dict(type='L1Loss', loss_weight=3.0),
+    loss_plan_bound=dict(
+        type='PlanMapBoundLoss', loss_weight=3.0, dis_thresh=1.0),
+    loss_plan_col=dict(type='PlanCollisionLoss', loss_weight=1.0),
+    loss_vae_gen=dict(type='ProbabilisticLoss', loss_weight=3.0),
+    img_backbone=dict(
+        type='EVAViT',
+        img_size=640,
+        patch_size=16,
+        window_size=16,
+        in_chans=3,
+        embed_dim=768,
+        depth=12,
+        num_heads=12,
+        mlp_ratio=2.6666666666666665,
+        window_block_indexes=(0, 1, 3, 4, 6, 7, 9, 10),
+        qkv_bias=True,
+        drop_path_rate=0.1,
+        flash_attn=True,
+        with_cp=True,
+        frozen=False),
+    map_head=dict(
+        type='OrionHeadM',
+        num_classes=6,
+        in_channels=768,
+        out_dims=2048,
+        memory_len=600,
+        with_mask=True,
+        topk_proposals=300,
+        num_lane=1800,
+        num_lanes_one2one=300,
+        k_one2many=5,
+        lambda_one2many=1.0,
+        num_extra=256,
+        n_control=11,
+        pc_range=[-51.2, -51.2, -5.0, 51.2, 51.2, 3.0],
+        code_weights=[1.0, 1.0],
+        score_threshold=0.2,
+        transformer=dict(
+            type='PETRTemporalTransformer',
+            input_dimension=256,
+            output_dimension=256,
+            num_layers=6,
+            embed_dims=256,
+            num_heads=8,
+            feedforward_dims=2048,
+            dropout=0.1,
+            with_cp=True,
+            flash_attn=True),
+        train_cfg=dict(
+            assigner=dict(
+                type='LaneHungarianAssigner',
+                cls_cost=dict(type='FocalLossCost', weight=1.5),
+                reg_cost=dict(type='LaneL1Cost', weight=0.02),
+                iou_cost=dict(type='IoUCost', weight=0.0))),
+        loss_cls=dict(
+            type='FocalLoss',
+            use_sigmoid=True,
+            gamma=2.0,
+            alpha=0.25,
+            loss_weight=1.5),
+        loss_bbox=dict(type='L1Loss', loss_weight=0.02),
+        loss_dir=dict(type='PtsDirCosLoss', loss_weight=0.0)),
+    pts_bbox_head=dict(
+        type='OrionHead',
+        num_classes=9,
+        in_channels=768,
+        out_dims=2048,
+        num_query=600,
+        with_mask=True,
+        memory_len=600,
+        topk_proposals=300,
+        num_propagated=300,
+        num_extra=256,
+        n_control=11,
+        match_with_velo=False,
+        pred_traffic_light_state=True,
+        use_col_loss=True,
+        use_memory=True,
+        scalar=10,
+        noise_scale=1.0,
+        dn_weight=1.0,
+        split=0.75,
+        use_pe=False,
+        motion_transformer_decoder=dict(
+            type='OrionTransformerDecoder',
+            num_layers=1,
+            embed_dims=256,
+            num_heads=8,
+            dropout=0.0,
+            feedforward_dims=512,
+            with_cp=True,
+            flash_attn=True,
+            return_intermediate=False),
+        code_weights=[2.0, 2.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+        score_threshold=0.2,
+        class_agnostic_nms=dict(
+            classes=[0, 1, 2, 3, 4, 5, 6, 7, 8],
+            compensate=[0, 0, 0.3, 0, 0, 0, 0, 0.3, 0],
+            pre_max_size=1000,
+            post_max_size=300,
+            nms_thr=0.1),
+        memory_decoder_transformer=dict(
+            type='OrionTransformerDecoder',
+            num_layers=1,
+            embed_dims=256,
+            num_heads=8,
+            dropout=0.0,
+            feedforward_dims=512,
+            with_cp=True,
+            flash_attn=True,
+            return_intermediate=False),
+        transformer=dict(
+            type='PETRTemporalTransformer',
+            input_dimension=256,
+            output_dimension=256,
+            num_layers=6,
+            embed_dims=256,
+            num_heads=8,
+            feedforward_dims=2048,
+            dropout=0.1,
+            with_cp=True,
+            flash_attn=True),
+        bbox_coder=dict(
+            type='CustomNMSFreeCoder',
+            post_center_range=[-61.2, -61.2, -10.0, 61.2, 61.2, 10.0],
+            pc_range=[-51.2, -51.2, -5.0, 51.2, 51.2, 3.0],
+            max_num=300,
+            voxel_size=[0.2, 0.2, 8],
+            num_classes=9),
+        loss_cls=dict(
+            type='FocalLoss',
+            use_sigmoid=True,
+            gamma=2.0,
+            alpha=0.25,
+            loss_weight=2.0),
+        loss_traffic=dict(
+            type='FocalLoss',
+            use_sigmoid=True,
+            gamma=2.0,
+            alpha=0.25,
+            loss_weight=2.0),
+        loss_bbox=dict(type='L1Loss', loss_weight=0.25),
+        loss_iou=dict(type='GIoULoss', loss_weight=0.0)),
+    train_cfg=dict(
+        pts=dict(
+            grid_size=[512, 512, 1],
+            voxel_size=[0.2, 0.2, 8],
+            point_cloud_range=[-51.2, -51.2, -5.0, 51.2, 51.2, 3.0],
+            out_size_factor=4,
+            assigner=dict(
+                type='HungarianAssigner3D',
+                cls_cost=dict(type='FocalLossCost', weight=2.0),
+                reg_cost=dict(type='BBox3DL1Cost', weight=0.25),
+                iou_cost=dict(type='IoUCost', weight=0.0),
+                pc_range=[-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]))))
+info_root = 'data/infos'
+map_root = 'data/bench2drive/maps'
+map_file = 'data/infos/b2d_map_infos.pkl'
+ann_file_train = 'data/infos/b2d_infos_train.pkl'
+ann_file_val = 'data/infos/b2d_infos_val.pkl'
+ann_file_test = 'data/infos/b2d_infos_val.pkl'
+inference_only_pipeline = [
+    dict(
+        type='LoadMultiViewImageFromFilesInCeph',
+        to_float32=True,
+        file_client_args=dict(backend='disk'),
+        img_root='data/bench2drive'),
+    dict(
+        type='NormalizeMultiviewImage',
+        mean=[123.675, 116.28, 103.53],
+        std=[58.395, 57.12, 57.375],
+        to_rgb=True),
+    dict(type='PadMultiViewImage', size_divisor=32),
+    dict(
+        type='MultiScaleFlipAug3D',
+        img_scale=(1600, 900),
+        pts_scale_ratio=1,
+        flip=False,
+        transforms=[
+            dict(
+                type='DefaultFormatBundle3D',
+                class_names=[
+                    'car', 'van', 'truck', 'bicycle', 'traffic_sign',
+                    'traffic_cone', 'traffic_light', 'pedestrian', 'others'
+                ],
+                with_label=False),
+            dict(
+                type='CustomCollect3D',
+                keys=['img', 'timestamp', 'l2g_r_mat', 'l2g_t', 'command'])
+        ])
+]
+optimizer = dict(
+    constructor='LearningRateDecayOptimizerConstructor',
+    type='AdamW',
+    lr=8e-05,
+    betas=(0.9, 0.999),
+    weight_decay=1e-05,
+    paramwise_cfg=dict(
+        decay_rate=0.9,
+        head_decay_rate=4.0,
+        lm_head_decay_rate=0.1,
+        decay_type='vit_wise',
+        num_layers=24))
+optimizer_config = dict(
+    type='Fp16OptimizerHook',
+    loss_scale='dynamic',
+    grad_clip=dict(max_norm=35, norm_type=2))
+lr_config = dict(
+    policy='CosineAnnealing',
+    warmup='linear',
+    warmup_iters=500,
+    warmup_ratio=0.3333333333333333,
+    min_lr_ratio=0.001)
+find_unused_parameters = False
+runner = dict(type='IterBasedRunner', max_iters=88038)
+gpu_ids = range(0, 1)
+
+2026-01-14 11:00:04,939 - mmdet - INFO - Set random seed to 0, deterministic: True
+======== shape of rope freq torch.Size([256, 64]) ========
+======== shape of rope freq torch.Size([1600, 64]) ========
+Some weights of the model checkpoint at ckpts/tiny_llama/ were not used when initializing LlavaLlamaForCausalLM: ['model.vision_tower.vision_tower.vision_tower.rope_win.freqs_sin', 'model.vision_tower.vision_tower.vision_tower.blocks.10.mlp.w1.bias', 'model.mm_projector.query_decoder._layers.0.transformer_layers.4._layers.3.weight', 'model.mm_projector.query_decoder._layers.5.transformer_layers.4._layers.3.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.7.attn.rope.freqs_cos', 'model.vision_tower.vision_tower.vision_tower.blocks.9.attn.rope.freqs_sin', 'model.mm_projector.query_decoder._layers.1.transformer_layers.1.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.1.norm1.weight', 'model.mm_projector.query_decoder._layers.3.transformer_layers.4._layers.3.weight', 'model.mm_projector.query_decoder._layers.5.transformer_layers.0.attn.out_proj.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.9.attn.q_bias', 'model.vision_tower.vision_tower.vision_tower.blocks.3.norm1.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.7.mlp.w3.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.3.attn.rope.freqs_sin', 'model.vision_tower.vision_tower.vision_tower.blocks.1.attn.rope.freqs_sin', 'model.mm_projector.query_decoder._layers.4.transformer_layers.4._layers.0.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.7.norm1.bias', 'model.vision_tower.vision_tower.vision_tower.patch_embed.proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.8.mlp.w2.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.2.attn.rope.freqs_sin', 'model.mm_projector.query_decoder._layers.0.transformer_layers.2.attn.in_proj_weight', 'model.vision_tower.vision_tower.vision_tower.blocks.10.mlp.ffn_ln.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.3.norm2.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.6.attn.proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.1.mlp.w1.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.5.attn.rope.freqs_cos', 'model.mm_projector.query_decoder._layers.2.transformer_layers.2.attn.out_proj.bias', 'model.mm_projector.query_decoder._layers.2.transformer_layers.5.bias', 'model.mm_projector.query_decoder._layers.5.transformer_layers.1.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.7.mlp.w1.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.8.attn.proj.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.8.mlp.w3.bias', 'model.mm_projector.query_decoder._layers.1.transformer_layers.4._layers.0.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.4.mlp.ffn_ln.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.10.mlp.w3.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.3.mlp.ffn_ln.weight', 'model.mm_projector.query_decoder._layers.3.transformer_layers.3.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.10.norm2.bias', 'model.mm_projector.query_decoder._layers.2.transformer_layers.3.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.3.attn.q_proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.4.mlp.w3.weight', 'model.mm_projector.query_decoder._layers.2.transformer_layers.2.attn.in_proj_bias', 'model.vision_tower.vision_tower.vision_tower.blocks.5.attn.proj.bias', 'model.mm_projector.query_decoder._layers.2.transformer_layers.1.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.4.mlp.w1.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.1.attn.q_proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.2.norm1.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.10.attn.rope.freqs_cos', 'model.mm_projector.query_decoder._layers.1.transformer_layers.0.attn.out_proj.weight', 'model.mm_projector.query_decoder._layers.2.transformer_layers.4._layers.0.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.11.attn.q_proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.6.norm1.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.1.attn.proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.4.attn.q_bias', 'model.vision_tower.vision_tower.vision_tower.blocks.3.norm2.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.11.norm2.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.9.mlp.ffn_ln.weight', 'model.mm_projector.query_decoder._layers.5.transformer_layers.5.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.7.mlp.ffn_ln.weight', 'model.mm_projector.query_decoder._layers.2.transformer_layers.0.attn.out_proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.3.attn.proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.11.attn.k_proj.weight', 'model.mm_projector.input_projection.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.1.mlp.ffn_ln.bias', 'model.mm_projector.query_decoder._layers.2.transformer_layers.4._layers.0.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.10.attn.proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.6.attn.v_bias', 'model.mm_projector.query_decoder._layers.3.transformer_layers.4._layers.0.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.1.attn.rope.freqs_cos', 'model.vision_tower.vision_tower.vision_tower.blocks.11.mlp.w1.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.11.norm1.bias', 'model.mm_projector.query_decoder._layers.5.transformer_layers.4._layers.0.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.0.attn.q_bias', 'model.mm_projector.query_decoder._layers.4.transformer_layers.3.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.9.norm1.bias', 'model.mm_projector.query_decoder._layers.1.transformer_layers.3.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.9.mlp.w3.bias', 'model.vision_tower.vision_tower.vision_tower.patch_embed.proj.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.8.attn.q_bias', 'model.mm_projector.query_decoder._layers.5.transformer_layers.4._layers.3.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.5.attn.k_proj.weight', 'model.mm_projector.query_decoder._layers.3.transformer_layers.2.attn.in_proj_bias', 'model.mm_projector.query_decoder._layers.2.transformer_layers.4._layers.3.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.6.attn.rope.freqs_sin', 'model.vision_tower.vision_tower.vision_tower.blocks.3.attn.proj.bias', 'model.mm_projector.query_decoder._layers.1.transformer_layers.5.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.10.norm1.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.0.attn.v_proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.2.attn.rope.freqs_cos', 'model.mm_projector.query_decoder._layers.5.transformer_layers.1.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.10.norm2.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.10.mlp.ffn_ln.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.1.mlp.ffn_ln.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.10.attn.v_proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.6.mlp.ffn_ln.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.6.attn.q_proj.weight', 'model.mm_projector.query_decoder._layers.5.transformer_layers.2.attn.in_proj_weight', 'model.vision_tower.vision_tower.vision_tower.blocks.4.norm1.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.0.attn.proj.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.5.norm2.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.7.attn.proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.11.mlp.ffn_ln.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.7.mlp.w1.bias', 'model.mm_projector.query_decoder._layers.5.transformer_layers.3.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.8.attn.k_proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.5.norm1.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.2.mlp.w3.bias', 'model.mm_projector.query_decoder._layers.0.transformer_layers.3.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.1.mlp.w3.weight', 'model.mm_projector.query_decoder._layers.0.transformer_layers.4._layers.0.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.5.mlp.ffn_ln.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.4.attn.q_proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.11.attn.v_bias', 'model.mm_projector.query_decoder._layers.1.transformer_layers.5.bias', 'model.mm_projector.query_decoder._layers.4.transformer_layers.2.attn.in_proj_bias', 'model.vision_tower.vision_tower.vision_tower.blocks.4.norm2.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.8.attn.proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.9.attn.rope.freqs_cos', 'model.mm_projector.query_decoder._layers.1.transformer_layers.2.attn.out_proj.weight', 'model.mm_projector.query_decoder._layers.1.transformer_layers.0.attn.in_proj_bias', 'model.vision_tower.vision_tower.vision_tower.pos_embed', 'model.vision_tower.vision_tower.vision_tower.blocks.2.mlp.w1.weight', 'model.mm_projector.query_decoder._layers.0.transformer_layers.1.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.11.attn.rope.freqs_cos', 'model.vision_tower.vision_tower.vision_tower.blocks.5.attn.v_proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.7.attn.q_proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.2.attn.proj.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.7.attn.proj.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.11.mlp.w3.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.3.attn.v_bias', 'model.vision_tower.vision_tower.vision_tower.blocks.11.mlp.w1.weight', 'model.mm_projector.query_decoder._layers.0.transformer_layers.0.attn.in_proj_bias', 'model.vision_tower.vision_tower.vision_tower.blocks.6.attn.k_proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.2.attn.proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.2.norm2.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.0.attn.proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.7.attn.rope.freqs_sin', 'model.vision_tower.vision_tower.vision_tower.blocks.9.mlp.w1.bias', 'model.mm_projector.query_decoder._layers.3.transformer_layers.0.attn.in_proj_weight', 'model.mm_projector.query_decoder._layers.3.transformer_layers.0.attn.in_proj_bias', 'model.vision_tower.vision_tower.vision_tower.blocks.10.mlp.w3.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.0.mlp.ffn_ln.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.9.norm2.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.7.norm1.weight', 'model.mm_projector.query_decoder._layers.4.transformer_layers.4._layers.3.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.8.norm1.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.5.attn.proj.weight', 'model.mm_projector.query_decoder._layers.3.transformer_layers.0.attn.out_proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.4.mlp.ffn_ln.weight', 'model.mm_projector.query_decoder._layers.2.transformer_layers.3.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.5.mlp.w3.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.10.attn.rope.freqs_sin', 'model.vision_tower.vision_tower.vision_tower.blocks.1.mlp.w3.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.0.mlp.ffn_ln.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.3.attn.k_proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.9.attn.q_proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.6.norm2.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.8.mlp.w2.weight', 'model.mm_projector.query_decoder._layers.4.transformer_layers.0.attn.in_proj_bias', 'model.vision_tower.vision_tower.vision_tower.blocks.7.attn.v_proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.10.mlp.w2.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.1.attn.proj.bias', 'model.mm_projector.query_embedding.weight', 'model.mm_projector.query_decoder._layers.2.transformer_layers.1.bias', 'model.mm_projector.query_decoder._layers.4.transformer_layers.0.attn.out_proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.5.attn.rope.freqs_sin', 'model.vision_tower.vision_tower.vision_tower.blocks.1.norm2.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.7.attn.q_bias', 'model.vision_tower.vision_tower.vision_tower.blocks.0.mlp.w1.bias', 'model.mm_projector.query_decoder._layers.4.transformer_layers.5.bias', 'model.mm_projector.query_decoder._layers.3.transformer_layers.2.attn.out_proj.weight', 'model.mm_projector.query_decoder._layers.4.transformer_layers.1.bias', 'model.mm_projector.query_decoder._layers.3.transformer_layers.5.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.4.attn.rope.freqs_cos', 'model.vision_tower.vision_tower.vision_tower.blocks.7.mlp.ffn_ln.bias', 'model.mm_projector.query_decoder._layers.1.transformer_layers.0.attn.in_proj_weight', 'model.vision_tower.vision_tower.vision_tower.blocks.3.mlp.w2.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.1.mlp.w1.bias', 'model.mm_projector.query_decoder._layers.1.transformer_layers.4._layers.3.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.11.norm2.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.4.norm1.bias', 'model.mm_projector.query_decoder._layers.1.transformer_layers.2.attn.in_proj_weight', 'model.vision_tower.vision_tower.vision_tower.blocks.0.attn.v_bias', 'model.vision_tower.vision_tower.vision_tower.blocks.1.attn.q_bias', 'model.vision_tower.vision_tower.vision_tower.blocks.0.mlp.w3.bias', 'model.mm_projector.query_decoder._layers.4.transformer_layers.1.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.11.mlp.w2.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.9.mlp.ffn_ln.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.0.attn.k_proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.0.norm1.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.6.mlp.w2.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.11.attn.rope.freqs_sin', 'model.vision_tower.vision_tower.vision_tower.blocks.1.mlp.w2.bias', 'model.mm_projector.query_decoder._layers.0.transformer_layers.5.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.0.norm2.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.9.mlp.w2.bias', 'model.mm_projector.query_decoder._layers.4.transformer_layers.2.attn.out_proj.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.2.mlp.ffn_ln.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.5.attn.q_proj.weight', 'model.mm_projector.query_decoder._layers.3.transformer_layers.3.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.4.attn.proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.7.attn.v_bias', 'model.vision_tower.vision_tower.vision_tower.blocks.4.attn.v_proj.weight', 'model.mm_projector.query_decoder._layers.0.transformer_layers.0.attn.in_proj_weight', 'model.mm_projector.query_decoder._layers.0.transformer_layers.4._layers.0.bias', 'model.mm_projector.query_decoder._layers.5.transformer_layers.2.attn.out_proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.6.norm2.bias', 'model.mm_projector.query_decoder._layers.0.transformer_layers.3.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.0.mlp.w2.bias', 'model.mm_projector.query_decoder._layers.1.transformer_layers.2.attn.out_proj.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.11.attn.q_bias', 'model.vision_tower.vision_tower.vision_tower.blocks.11.mlp.w2.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.5.attn.v_bias', 'model.mm_projector.query_decoder._layers.1.transformer_layers.0.attn.out_proj.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.6.mlp.w2.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.9.norm1.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.11.mlp.ffn_ln.weight', 'model.mm_projector.query_decoder._layers.2.transformer_layers.0.attn.in_proj_weight', 'model.mm_projector.query_decoder._layers.4.transformer_layers.2.attn.in_proj_weight', 'model.vision_tower.vision_tower.vision_tower.blocks.5.mlp.w1.bias', 'model.mm_projector.query_decoder._layers.1.transformer_layers.4._layers.3.bias', 'model.mm_projector.query_decoder._layers.3.transformer_layers.2.attn.in_proj_weight', 'model.mm_projector.query_decoder._layers.1.transformer_layers.3.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.2.attn.k_proj.weight', 'model.mm_projector.query_decoder._layers.2.transformer_layers.0.attn.out_proj.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.5.norm1.bias', 'model.mm_projector.query_decoder._layers.1.transformer_layers.4._layers.0.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.3.attn.q_bias', 'model.vision_tower.vision_tower.vision_tower.blocks.2.attn.v_proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.9.attn.proj.bias', 'model.mm_projector.query_decoder._layers.0.transformer_layers.5.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.8.norm2.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.5.mlp.w3.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.4.attn.rope.freqs_sin', 'model.mm_projector.query_decoder._layers.5.transformer_layers.5.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.10.attn.proj.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.11.attn.v_proj.weight', 'model.mm_projector.query_decoder._layers.0.transformer_layers.2.attn.in_proj_bias', 'model.vision_tower.vision_tower.vision_tower.blocks.10.attn.k_proj.weight', 'model.mm_projector.query_decoder._layers.0.transformer_layers.2.attn.out_proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.5.mlp.ffn_ln.weight', 'model.vision_tower.vision_tower.vision_tower.rope_glb.freqs_cos', 'model.vision_tower.vision_tower.vision_tower.blocks.9.mlp.w2.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.1.norm1.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.3.mlp.w2.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.10.mlp.w2.bias', 'model.mm_projector.query_decoder._layers.2.transformer_layers.2.attn.out_proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.11.attn.proj.weight', 'model.mm_projector.query_decoder._layers.5.transformer_layers.3.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.8.attn.v_proj.weight', 'model.mm_projector.query_decoder._layers.5.transformer_layers.0.attn.out_proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.1.attn.v_proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.2.attn.q_bias', 'model.vision_tower.vision_tower.vision_tower.blocks.7.attn.k_proj.weight', 'model.mm_projector.query_decoder._layers.3.transformer_layers.1.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.7.mlp.w2.weight', 'model.mm_projector.query_decoder._layers.3.transformer_layers.5.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.2.mlp.w1.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.9.norm2.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.1.attn.k_proj.weight', 'model.mm_projector.input_projection.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.6.mlp.ffn_ln.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.8.mlp.w3.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.7.mlp.w2.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.8.mlp.ffn_ln.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.5.norm2.weight', 'model.vision_tower.vision_tower.vision_tower.rope_win.freqs_cos', 'model.vision_tower.vision_tower.vision_tower.blocks.3.mlp.w1.weight', 'model.mm_projector.query_decoder._layers.5.transformer_layers.2.attn.in_proj_bias', 'model.vision_tower.vision_tower.vision_tower.blocks.0.attn.rope.freqs_cos', 'model.vision_tower.vision_tower.vision_tower.blocks.3.attn.rope.freqs_cos', 'model.vision_tower.vision_tower.vision_tower.blocks.9.attn.v_proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.8.mlp.w1.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.0.norm2.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.10.norm1.bias', 'model.mm_projector.query_decoder._layers.3.transformer_layers.2.attn.out_proj.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.6.attn.q_bias', 'model.mm_projector.query_decoder._layers.4.transformer_layers.2.attn.out_proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.4.norm2.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.4.mlp.w3.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.6.attn.proj.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.8.attn.v_bias', 'model.vision_tower.vision_tower.vision_tower.blocks.6.attn.rope.freqs_cos', 'model.vision_tower.vision_tower.vision_tower.blocks.2.mlp.w2.bias', 'model.mm_projector.query_decoder._layers.5.transformer_layers.0.attn.in_proj_weight', 'model.mm_projector.query_decoder._layers.4.transformer_layers.4._layers.3.weight', 'model.vision_tower.vision_tower.vision_tower.rope_glb.freqs_sin', 'model.vision_tower.vision_tower.vision_tower.blocks.9.attn.proj.weight', 'model.mm_projector.query_decoder._layers.0.transformer_layers.1.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.10.mlp.w1.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.0.mlp.w3.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.2.attn.q_proj.weight', 'model.mm_projector.output_projection.bias', 'model.mm_projector.query_decoder._layers.2.transformer_layers.5.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.3.attn.v_proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.9.attn.k_proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.7.norm2.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.3.mlp.w3.weight', 'model.mm_projector.query_decoder._layers.2.transformer_layers.4._layers.3.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.7.norm2.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.1.norm2.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.7.mlp.w3.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.8.mlp.w1.weight', 'model.mm_projector.query_decoder._layers.3.transformer_layers.0.attn.out_proj.bias', 'model.mm_projector.query_decoder._layers.4.transformer_layers.0.attn.out_proj.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.4.mlp.w2.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.2.attn.v_bias', 'model.vision_tower.vision_tower.vision_tower.blocks.3.mlp.ffn_ln.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.6.mlp.w1.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.6.mlp.w3.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.2.norm1.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.4.attn.proj.bias', 'model.mm_projector.query_decoder._layers.0.transformer_layers.4._layers.3.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.4.attn.k_proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.4.mlp.w1.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.8.attn.rope.freqs_sin', 'model.mm_projector.query_decoder._layers.3.transformer_layers.1.bias', 'model.mm_projector.query_decoder._layers.0.transformer_layers.0.attn.out_proj.bias', 'model.mm_projector.query_decoder._layers.4.transformer_layers.5.weight', 'model.mm_projector.query_decoder._layers.3.transformer_layers.4._layers.3.bias', 'model.mm_projector.query_decoder._layers.0.transformer_layers.0.attn.out_proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.0.mlp.w1.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.2.mlp.ffn_ln.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.0.norm1.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.11.norm1.weight', 'model.mm_projector.query_decoder._layers.5.transformer_layers.0.attn.in_proj_bias', 'model.vision_tower.vision_tower.vision_tower.blocks.5.mlp.w2.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.2.norm2.weight', 'model.mm_projector.query_decoder._layers.4.transformer_layers.4._layers.0.weight', 'model.mm_projector.query_decoder._layers.2.transformer_layers.0.attn.in_proj_bias', 'model.mm_projector.query_decoder._layers.4.transformer_layers.3.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.3.mlp.w1.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.0.attn.q_proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.9.mlp.w3.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.8.norm1.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.1.attn.v_bias', 'model.vision_tower.vision_tower.vision_tower.blocks.2.mlp.w2.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.9.mlp.w1.weight', 'model.mm_projector.query_decoder._layers.3.transformer_layers.4._layers.0.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.10.attn.q_bias', 'model.vision_tower.vision_tower.vision_tower.blocks.3.mlp.w3.bias', 'model.mm_projector.query_decoder._layers.0.transformer_layers.2.attn.out_proj.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.11.mlp.w3.weight', 'model.mm_projector.query_decoder._layers.5.transformer_layers.4._layers.0.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.4.attn.v_bias', 'model.mm_projector.output_projection.weight', 'model.mm_projector.query_decoder._layers.1.transformer_layers.2.attn.in_proj_bias', 'model.vision_tower.vision_tower.vision_tower.blocks.5.mlp.w1.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.6.norm1.bias', 'model.mm_projector.query_decoder._layers.5.transformer_layers.2.attn.out_proj.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.5.attn.q_bias', 'model.vision_tower.vision_tower.vision_tower.blocks.0.mlp.w2.weight', 'model.mm_projector.query_decoder._layers.4.transformer_layers.0.attn.in_proj_weight', 'model.vision_tower.vision_tower.vision_tower.blocks.6.mlp.w3.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.4.mlp.w2.bias', 'model.mm_projector.query_decoder._layers.1.transformer_layers.1.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.9.attn.v_bias', 'model.vision_tower.vision_tower.vision_tower.blocks.1.mlp.w2.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.2.mlp.w3.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.8.attn.q_proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.5.mlp.w2.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.10.attn.v_bias', 'model.mm_projector.query_decoder._layers.2.transformer_layers.2.attn.in_proj_weight', 'model.vision_tower.vision_tower.vision_tower.blocks.8.mlp.ffn_ln.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.0.attn.rope.freqs_sin', 'model.vision_tower.vision_tower.vision_tower.blocks.11.attn.proj.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.3.norm1.bias', 'model.vision_tower.vision_tower.vision_tower.blocks.6.attn.v_proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.8.norm2.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.8.attn.rope.freqs_cos', 'model.vision_tower.vision_tower.vision_tower.blocks.10.attn.q_proj.weight', 'model.vision_tower.vision_tower.vision_tower.blocks.6.mlp.w1.bias']
+- This IS expected if you are initializing LlavaLlamaForCausalLM from the checkpoint of a model trained on another task or with another architecture (e.g. initializing a BertForSequenceClassification model from a BertForPreTraining model).
+- This IS NOT expected if you are initializing LlavaLlamaForCausalLM from the checkpoint of a model that you expect to be exactly identical (initializing a BertForSequenceClassification model from a BertForSequenceClassification model).
+Some weights of LlavaLlamaForCausalLM were not initialized from the model checkpoint at ckpts/tiny_llama/ and are newly initialized: ['model.layers.9.self_attn.rotary_emb.inv_freq', 'model.layers.7.self_attn.rotary_emb.inv_freq', 'model.layers.12.self_attn.rotary_emb.inv_freq', 'model.layers.14.self_attn.rotary_emb.inv_freq', 'model.layers.2.self_attn.rotary_emb.inv_freq', 'model.layers.17.self_attn.rotary_emb.inv_freq', 'model.layers.16.self_attn.rotary_emb.inv_freq', 'model.layers.19.self_attn.rotary_emb.inv_freq', 'model.layers.13.self_attn.rotary_emb.inv_freq', 'model.layers.18.self_attn.rotary_emb.inv_freq', 'model.layers.15.self_attn.rotary_emb.inv_freq', 'weighted_mask', 'model.layers.20.self_attn.rotary_emb.inv_freq', 'model.layers.5.self_attn.rotary_emb.inv_freq', 'model.layers.3.self_attn.rotary_emb.inv_freq', 'model.layers.8.self_attn.rotary_emb.inv_freq', 'model.layers.4.self_attn.rotary_emb.inv_freq', 'model.layers.0.self_attn.rotary_emb.inv_freq', 'model.layers.21.self_attn.rotary_emb.inv_freq', 'model.layers.1.self_attn.rotary_emb.inv_freq', 'model.layers.6.self_attn.rotary_emb.inv_freq', 'model.layers.11.self_attn.rotary_emb.inv_freq', 'model.layers.10.self_attn.rotary_emb.inv_freq']
+You should probably TRAIN this model on a down-stream task to be able to use it for predictions and inference.
+2026-01-14 11:00:12,016 - mmdet - INFO - Model:
+Orion(
+  (pts_bbox_head): OrionHead(
+    (loss_cls): FocalLoss()
+    (loss_bbox): L1Loss()
+    (traj_branches): ModuleList(
+      (0): Sequential(
+        (0): Linear(in_features=512, out_features=512, bias=True)
+        (1): ReLU()
+        (2): Linear(in_features=512, out_features=512, bias=True)
+        (3): ReLU()
+        (4): Linear(in_features=512, out_features=12, bias=True)
+      )
+    )
+    (traj_cls_branches): ModuleList(
+      (0): Sequential(
+        (0): Linear(in_features=512, out_features=512, bias=True)
+        (1): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+        (2): ReLU(inplace=True)
+        (3): Linear(in_features=512, out_features=512, bias=True)
+        (4): LayerNorm((512,), eps=1e-05, elementwise_affine=True)
+        (5): ReLU(inplace=True)
+        (6): Linear(in_features=512, out_features=1, bias=True)
+      )
+    )
+    (cls_branches): ModuleList(
+      (0-5): 6 x Sequential(
+        (0): Linear(in_features=256, out_features=256, bias=True)
+        (1): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+        (2): ReLU(inplace=True)
+        (3): Linear(in_features=256, out_features=256, bias=True)
+        (4): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+        (5): ReLU(inplace=True)
+        (6): Linear(in_features=256, out_features=9, bias=True)
+      )
+    )
+    (reg_branches): ModuleList(
+      (0-5): 6 x Sequential(
+        (0): Linear(in_features=256, out_features=256, bias=True)
+        (1): ReLU()
+        (2): Linear(in_features=256, out_features=256, bias=True)
+        (3): ReLU()
+        (4): Linear(in_features=256, out_features=10, bias=True)
+      )
+    )
+    (input_projection): Linear(in_features=768, out_features=256, bias=True)
+    (output_projection): Linear(in_features=256, out_features=2048, bias=True)
+    (reference_points): Embedding(600, 3)
+    (pseudo_reference_points): Embedding(300, 3)
+    (query_embedding): Embedding(256, 256)
+    (can_bus_embed): Sequential(
+      (0): Linear(in_features=89, out_features=1024, bias=True)
+      (1): ReLU()
+      (2): Linear(in_features=1024, out_features=2048, bias=True)
+    )
+    (loss_traj): L1Loss()
+    (loss_traj_cls): FocalLoss()
+    (loss_iou): GIoULoss()
+    (transformer): PETRTemporalTransformer(
+      (query_decoder): PETRTransformerDecoder(
+        (_layers): ModuleList(
+          (0-5): 6 x PETRTransformerDecoderLayer(
+            (transformer_layers): ModuleList(
+              (0): MultiHeadAttentionwDropout(
+                (attn): MultiheadAttention(
+                  (out_proj): NonDynamicallyQuantizableLinear(in_features=256, out_features=256, bias=True)
+                )
+                (proj_drop): Dropout(p=0.1, inplace=False)
+              )
+              (1): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+              (2): MultiHeadAttentionwDropout(
+                (attn): FlashMHA(
+                  (inner_attn): FlashAttention()
+                  (out_proj): Linear(in_features=256, out_features=256, bias=True)
+                )
+                (proj_drop): Dropout(p=0.1, inplace=False)
+              )
+              (3): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+              (4): FFN(
+                (_layers): Sequential(
+                  (0): Linear(in_features=256, out_features=2048, bias=True)
+                  (1): ReLU(inplace=True)
+                  (2): Dropout(p=0.1, inplace=False)
+                  (3): Linear(in_features=2048, out_features=256, bias=True)
+                  (4): Dropout(p=0.1, inplace=False)
+                )
+              )
+              (5): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+            )
+          )
+        )
+      )
+    )
+    (motion_decoder): OrionTransformerDecoder(
+      (_layers): ModuleList(
+        (0): OrionTransformerDecoderLayer(
+          (transformer_layers): ModuleList(
+            (0): MultiHeadAttentionwDropout(
+              (attn): FlashMHA(
+                (inner_attn): FlashAttention()
+                (out_proj): Linear(in_features=256, out_features=256, bias=False)
+              )
+              (proj_drop): Dropout(p=0.0, inplace=False)
+            )
+            (1): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+            (2): FFN(
+              (_layers): Sequential(
+                (0): Linear(in_features=256, out_features=512, bias=True)
+                (1): ReLU(inplace=True)
+                (2): Dropout(p=0.0, inplace=False)
+                (3): Linear(in_features=512, out_features=256, bias=True)
+                (4): Dropout(p=0.0, inplace=False)
+              )
+            )
+            (3): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+          )
+        )
+      )
+    )
+    (motion_mode_query): Embedding(6, 256)
+    (memory_query): Embedding(16, 256)
+    (scene_time_embedding): Sequential(
+      (0): Linear(in_features=256, out_features=256, bias=True)
+      (1): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+    )
+    (memory_decoder_cq): OrionTransformerDecoder(
+      (_layers): ModuleList(
+        (0): OrionTransformerDecoderLayer(
+          (transformer_layers): ModuleList(
+            (0): MultiHeadAttentionwDropout(
+              (attn): FlashMHA(
+                (inner_attn): FlashAttention()
+                (out_proj): Linear(in_features=256, out_features=256, bias=False)
+              )
+              (proj_drop): Dropout(p=0.0, inplace=False)
+            )
+            (1): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+            (2): FFN(
+              (_layers): Sequential(
+                (0): Linear(in_features=256, out_features=512, bias=True)
+                (1): ReLU(inplace=True)
+                (2): Dropout(p=0.0, inplace=False)
+                (3): Linear(in_features=512, out_features=256, bias=True)
+                (4): Dropout(p=0.0, inplace=False)
+              )
+            )
+            (3): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+          )
+        )
+      )
+    )
+    (memory_decoder_mq): OrionTransformerDecoder(
+      (_layers): ModuleList(
+        (0): OrionTransformerDecoderLayer(
+          (transformer_layers): ModuleList(
+            (0): MultiHeadAttentionwDropout(
+              (attn): FlashMHA(
+                (inner_attn): FlashAttention()
+                (out_proj): Linear(in_features=256, out_features=256, bias=False)
+              )
+              (proj_drop): Dropout(p=0.0, inplace=False)
+            )
+            (1): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+            (2): FFN(
+              (_layers): Sequential(
+                (0): Linear(in_features=256, out_features=512, bias=True)
+                (1): ReLU(inplace=True)
+                (2): Dropout(p=0.0, inplace=False)
+                (3): Linear(in_features=512, out_features=256, bias=True)
+                (4): Dropout(p=0.0, inplace=False)
+              )
+            )
+            (3): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+          )
+        )
+      )
+    )
+    (loss_traffic): FocalLoss()
+    (tl_branches): ModuleList(
+      (0-5): 6 x Sequential(
+        (0): Linear(in_features=256, out_features=256, bias=True)
+        (1): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+        (2): ReLU(inplace=True)
+        (3): Linear(in_features=256, out_features=256, bias=True)
+        (4): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+        (5): ReLU(inplace=True)
+        (6): Linear(in_features=256, out_features=4, bias=True)
+      )
+    )
+    (query_pos): Sequential(
+      (0): Linear(in_features=396, out_features=256, bias=True)
+      (1): ReLU()
+      (2): Linear(in_features=256, out_features=256, bias=True)
+    )
+    (time_embedding): Sequential(
+      (0): Linear(in_features=256, out_features=256, bias=True)
+      (1): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+    )
+    (ego_pose_pe): MLN(
+      (reduce): Sequential(
+        (0): Linear(in_features=156, out_features=256, bias=True)
+        (1): ReLU()
+      )
+      (gamma): Linear(in_features=256, out_features=256, bias=True)
+      (beta): Linear(in_features=256, out_features=256, bias=True)
+      (ln): LayerNorm((256,), eps=1e-05, elementwise_affine=False)
+    )
+  )
+  (img_backbone): EVAViT(
+    (patch_embed): PatchEmbed(
+      (proj): Conv2d(3, 768, kernel_size=(16, 16), stride=(16, 16))
+    )
+    (rope_win): VisionRotaryEmbeddingFast()
+    (rope_glb): VisionRotaryEmbeddingFast()
+    (blocks): ModuleList(
+      (0): Block(
+        (norm1): LayerNorm((768,), eps=1e-06, elementwise_affine=True)
+        (attn): Attention(
+          (q_proj): Linear(in_features=768, out_features=768, bias=False)
+          (k_proj): Linear(in_features=768, out_features=768, bias=False)
+          (v_proj): Linear(in_features=768, out_features=768, bias=False)
+          (rope): VisionRotaryEmbeddingFast()
+          (proj): Linear(in_features=768, out_features=768, bias=True)
+          (inner_attn_ln): Identity()
+          (inner_attn): FlashAttention()
+        )
+        (drop_path): Identity()
+        (norm2): LayerNorm((768,), eps=1e-06, elementwise_affine=True)
+        (mlp): SwiGLU(
+          (w1): Linear(in_features=768, out_features=2048, bias=True)
+          (w2): Linear(in_features=768, out_features=2048, bias=True)
+          (act): SiLU()
+          (ffn_ln): LayerNorm((2048,), eps=1e-06, elementwise_affine=True)
+          (w3): Linear(in_features=2048, out_features=768, bias=True)
+          (drop): Dropout(p=0.0, inplace=False)
+        )
+      )
+      (1-11): 11 x Block(
+        (norm1): LayerNorm((768,), eps=1e-06, elementwise_affine=True)
+        (attn): Attention(
+          (q_proj): Linear(in_features=768, out_features=768, bias=False)
+          (k_proj): Linear(in_features=768, out_features=768, bias=False)
+          (v_proj): Linear(in_features=768, out_features=768, bias=False)
+          (rope): VisionRotaryEmbeddingFast()
+          (proj): Linear(in_features=768, out_features=768, bias=True)
+          (inner_attn_ln): Identity()
+          (inner_attn): FlashAttention()
+        )
+        (drop_path): DropPath()
+        (norm2): LayerNorm((768,), eps=1e-06, elementwise_affine=True)
+        (mlp): SwiGLU(
+          (w1): Linear(in_features=768, out_features=2048, bias=True)
+          (w2): Linear(in_features=768, out_features=2048, bias=True)
+          (act): SiLU()
+          (ffn_ln): LayerNorm((2048,), eps=1e-06, elementwise_affine=True)
+          (w3): Linear(in_features=2048, out_features=768, bias=True)
+          (drop): Dropout(p=0.0, inplace=False)
+        )
+      )
+    )
+  )
+  (grid_mask): GridMask()
+  (query_pos): Sequential(
+    (0): Linear(in_features=396, out_features=256, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=256, out_features=256, bias=True)
+  )
+  (time_embedding): Sequential(
+    (0): Linear(in_features=256, out_features=256, bias=True)
+    (1): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+  )
+  (ego_pose_pe): MLN(
+    (reduce): Sequential(
+      (0): Linear(in_features=156, out_features=256, bias=True)
+      (1): ReLU()
+    )
+    (gamma): Linear(in_features=256, out_features=256, bias=True)
+    (beta): Linear(in_features=256, out_features=256, bias=True)
+    (ln): LayerNorm((256,), eps=1e-05, elementwise_affine=False)
+  )
+  (map_head): OrionHeadM(
+    (loss_cls): FocalLoss()
+    (loss_bbox): L1Loss()
+    (cls_branches): ModuleList(
+      (0-5): 6 x Sequential(
+        (0): Linear(in_features=256, out_features=256, bias=True)
+        (1): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+        (2): ReLU(inplace=True)
+        (3): Linear(in_features=256, out_features=256, bias=True)
+        (4): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+        (5): ReLU(inplace=True)
+        (6): Linear(in_features=256, out_features=6, bias=True)
+      )
+    )
+    (reg_branches): ModuleList(
+      (0-5): 6 x Sequential(
+        (0): Linear(in_features=256, out_features=256, bias=True)
+        (1): ReLU()
+        (2): Linear(in_features=256, out_features=256, bias=True)
+        (3): ReLU()
+        (4): Linear(in_features=256, out_features=33, bias=True)
+      )
+    )
+    (input_projection): Linear(in_features=768, out_features=256, bias=True)
+    (output_projection): Linear(in_features=256, out_features=2048, bias=True)
+    (reference_points_lane): Linear(in_features=256, out_features=3, bias=True)
+    (points_embedding_lane): Embedding(11, 256)
+    (instance_embedding_lane): Embedding(1800, 256)
+    (query_embedding): Embedding(256, 256)
+    (loss_dir): PtsDirCosLoss()
+    (transformer): PETRTemporalTransformer(
+      (query_decoder): PETRTransformerDecoder(
+        (_layers): ModuleList(
+          (0-5): 6 x PETRTransformerDecoderLayer(
+            (transformer_layers): ModuleList(
+              (0): MultiHeadAttentionwDropout(
+                (attn): MultiheadAttention(
+                  (out_proj): NonDynamicallyQuantizableLinear(in_features=256, out_features=256, bias=True)
+                )
+                (proj_drop): Dropout(p=0.1, inplace=False)
+              )
+              (1): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+              (2): MultiHeadAttentionwDropout(
+                (attn): FlashMHA(
+                  (inner_attn): FlashAttention()
+                  (out_proj): Linear(in_features=256, out_features=256, bias=True)
+                )
+                (proj_drop): Dropout(p=0.1, inplace=False)
+              )
+              (3): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+              (4): FFN(
+                (_layers): Sequential(
+                  (0): Linear(in_features=256, out_features=2048, bias=True)
+                  (1): ReLU(inplace=True)
+                  (2): Dropout(p=0.1, inplace=False)
+                  (3): Linear(in_features=2048, out_features=256, bias=True)
+                  (4): Dropout(p=0.1, inplace=False)
+                )
+              )
+              (5): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+            )
+          )
+        )
+      )
+    )
+    (query_pos): Sequential(
+      (0): Linear(in_features=396, out_features=256, bias=True)
+      (1): ReLU()
+      (2): Linear(in_features=256, out_features=256, bias=True)
+    )
+    (time_embedding): Sequential(
+      (0): Linear(in_features=256, out_features=256, bias=True)
+      (1): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+    )
+    (ego_pose_pe): MLN(
+      (reduce): Sequential(
+        (0): Linear(in_features=156, out_features=256, bias=True)
+        (1): ReLU()
+      )
+      (gamma): Linear(in_features=256, out_features=256, bias=True)
+      (beta): Linear(in_features=256, out_features=256, bias=True)
+      (ln): LayerNorm((256,), eps=1e-05, elementwise_affine=False)
+    )
+  )
+  (position_encoder): Sequential(
+    (0): Linear(in_features=192, out_features=1024, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=1024, out_features=256, bias=True)
+  )
+  (lm_head): PeftModelForCausalLM(
+    (base_model): LoraModel(
+      (model): LlavaLlamaForCausalLM(
+        (model): LlavaLlamaModel(
+          (embed_tokens): Embedding(32001, 2048)
+          (layers): ModuleList(
+            (0-21): 22 x LlamaDecoderLayer(
+              (self_attn): LlamaAttention(
+                (q_proj): lora.Linear(
+                  (base_layer): Linear(in_features=2048, out_features=2048, bias=False)
+                  (lora_dropout): ModuleDict(
+                    (default): Dropout(p=0.05, inplace=False)
+                  )
+                  (lora_A): ModuleDict(
+                    (default): Linear(in_features=2048, out_features=16, bias=False)
+                  )
+                  (lora_B): ModuleDict(
+                    (default): Linear(in_features=16, out_features=2048, bias=False)
+                  )
+                  (lora_embedding_A): ParameterDict()
+                  (lora_embedding_B): ParameterDict()
+                  (lora_magnitude_vector): ModuleDict()
+                )
+                (k_proj): lora.Linear(
+                  (base_layer): Linear(in_features=2048, out_features=256, bias=False)
+                  (lora_dropout): ModuleDict(
+                    (default): Dropout(p=0.05, inplace=False)
+                  )
+                  (lora_A): ModuleDict(
+                    (default): Linear(in_features=2048, out_features=16, bias=False)
+                  )
+                  (lora_B): ModuleDict(
+                    (default): Linear(in_features=16, out_features=256, bias=False)
+                  )
+                  (lora_embedding_A): ParameterDict()
+                  (lora_embedding_B): ParameterDict()
+                  (lora_magnitude_vector): ModuleDict()
+                )
+                (v_proj): lora.Linear(
+                  (base_layer): Linear(in_features=2048, out_features=256, bias=False)
+                  (lora_dropout): ModuleDict(
+                    (default): Dropout(p=0.05, inplace=False)
+                  )
+                  (lora_A): ModuleDict(
+                    (default): Linear(in_features=2048, out_features=16, bias=False)
+                  )
+                  (lora_B): ModuleDict(
+                    (default): Linear(in_features=16, out_features=256, bias=False)
+                  )
+                  (lora_embedding_A): ParameterDict()
+                  (lora_embedding_B): ParameterDict()
+                  (lora_magnitude_vector): ModuleDict()
+                )
+                (o_proj): lora.Linear(
+                  (base_layer): Linear(in_features=2048, out_features=2048, bias=False)
+                  (lora_dropout): ModuleDict(
+                    (default): Dropout(p=0.05, inplace=False)
+                  )
+                  (lora_A): ModuleDict(
+                    (default): Linear(in_features=2048, out_features=16, bias=False)
+                  )
+                  (lora_B): ModuleDict(
+                    (default): Linear(in_features=16, out_features=2048, bias=False)
+                  )
+                  (lora_embedding_A): ParameterDict()
+                  (lora_embedding_B): ParameterDict()
+                  (lora_magnitude_vector): ModuleDict()
+                )
+                (rotary_emb): LlamaRotaryEmbedding()
+              )
+              (mlp): LlamaMLP(
+                (gate_proj): Linear(in_features=2048, out_features=5632, bias=False)
+                (up_proj): Linear(in_features=2048, out_features=5632, bias=False)
+                (down_proj): Linear(in_features=5632, out_features=2048, bias=False)
+                (act_fn): SiLUActivation()
+              )
+              (input_layernorm): LlamaRMSNorm()
+              (post_attention_layernorm): LlamaRMSNorm()
+            )
+          )
+          (norm): LlamaRMSNorm()
+        )
+        (lm_head): Linear(in_features=2048, out_features=32001, bias=False)
+      )
+    )
+  )
+  (present_distribution): DistributionModule(
+    (encoder): DistributionEncoder1DV2(
+      (conv1): Conv1d(2048, 4096, kernel_size=(1,), stride=(1,))
+      (conv2): Conv1d(4096, 4096, kernel_size=(1,), stride=(1,))
+      (conv3): Conv1d(4096, 1024, kernel_size=(1,), stride=(1,))
+      (relu): ReLU(inplace=True)
+    )
+    (last_conv): Sequential(
+      (0): AdaptiveAvgPool1d(output_size=1)
+      (1): Conv1d(1024, 64, kernel_size=(1,), stride=(1,))
+    )
+  )
+  (future_distribution): DistributionModule(
+    (encoder): DistributionEncoder1DV2(
+      (conv1): Conv1d(2060, 4120, kernel_size=(1,), stride=(1,))
+      (conv2): Conv1d(4120, 4120, kernel_size=(1,), stride=(1,))
+      (conv3): Conv1d(4120, 1030, kernel_size=(1,), stride=(1,))
+      (relu): ReLU(inplace=True)
+    )
+    (last_conv): Sequential(
+      (0): AdaptiveAvgPool1d(output_size=1)
+      (1): Conv1d(1030, 64, kernel_size=(1,), stride=(1,))
+    )
+  )
+  (predict_model): PredictModel(
+    (gru): GRU(32, 1024, num_layers=2)
+    (linear1): Linear(in_features=1024, out_features=2048, bias=True)
+    (linear2): Linear(in_features=2048, out_features=4096, bias=True)
+    (linear3): Linear(in_features=4096, out_features=2048, bias=True)
+    (relu): ReLU(inplace=True)
+  )
+  (ego_fut_decoder): Sequential(
+    (0): Linear(in_features=4096, out_features=4096, bias=True)
+    (1): ReLU()
+    (2): Linear(in_features=4096, out_features=4096, bias=True)
+    (3): ReLU()
+    (4): Linear(in_features=4096, out_features=12, bias=True)
+  )
+  (loss_plan_reg): L1Loss()
+  (loss_plan_bound): PlanMapBoundLoss()
+  (loss_plan_col): PlanCollisionLoss()
+  (loss_vae_gen): ProbabilisticLoss()
+)
+{'decay_rate': 0.9, 'head_decay_rate': 4.0, 'lm_head_decay_rate': 0.1, 'decay_type': 'vit_wise', 'num_layers': 24}
+Build LearningRateDecayOptimizerConstructor vit_wise 0.900000 - 26
+Param groups = {
+  "layer_25_decay": {
+    "param_names": [
+      "pts_bbox_head.traj_branches.0.0.weight",
+      "pts_bbox_head.traj_branches.0.2.weight",
+      "pts_bbox_head.traj_branches.0.4.weight",
+      "pts_bbox_head.traj_cls_branches.0.0.weight",
+      "pts_bbox_head.traj_cls_branches.0.3.weight",
+      "pts_bbox_head.traj_cls_branches.0.6.weight",
+      "pts_bbox_head.cls_branches.0.0.weight",
+      "pts_bbox_head.cls_branches.0.3.weight",
+      "pts_bbox_head.cls_branches.0.6.weight",
+      "pts_bbox_head.reg_branches.0.0.weight",
+      "pts_bbox_head.reg_branches.0.2.weight",
+      "pts_bbox_head.reg_branches.0.4.weight",
+      "pts_bbox_head.input_projection.weight",
+      "pts_bbox_head.output_projection.weight",
+      "pts_bbox_head.reference_points.weight",
+      "pts_bbox_head.query_embedding.weight",
+      "pts_bbox_head.can_bus_embed.0.weight",
+      "pts_bbox_head.can_bus_embed.2.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.0.transformer_layers.0.attn.in_proj_weight",
+      "pts_bbox_head.transformer.query_decoder._layers.0.transformer_layers.0.attn.out_proj.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.0.transformer_layers.2.attn.in_proj_weight",
+      "pts_bbox_head.transformer.query_decoder._layers.0.transformer_layers.2.attn.out_proj.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.0.transformer_layers.4._layers.0.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.0.transformer_layers.4._layers.3.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.1.transformer_layers.0.attn.in_proj_weight",
+      "pts_bbox_head.transformer.query_decoder._layers.1.transformer_layers.0.attn.out_proj.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.1.transformer_layers.2.attn.in_proj_weight",
+      "pts_bbox_head.transformer.query_decoder._layers.1.transformer_layers.2.attn.out_proj.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.1.transformer_layers.4._layers.0.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.1.transformer_layers.4._layers.3.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.2.transformer_layers.0.attn.in_proj_weight",
+      "pts_bbox_head.transformer.query_decoder._layers.2.transformer_layers.0.attn.out_proj.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.2.transformer_layers.2.attn.in_proj_weight",
+      "pts_bbox_head.transformer.query_decoder._layers.2.transformer_layers.2.attn.out_proj.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.2.transformer_layers.4._layers.0.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.2.transformer_layers.4._layers.3.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.3.transformer_layers.0.attn.in_proj_weight",
+      "pts_bbox_head.transformer.query_decoder._layers.3.transformer_layers.0.attn.out_proj.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.3.transformer_layers.2.attn.in_proj_weight",
+      "pts_bbox_head.transformer.query_decoder._layers.3.transformer_layers.2.attn.out_proj.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.3.transformer_layers.4._layers.0.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.3.transformer_layers.4._layers.3.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.4.transformer_layers.0.attn.in_proj_weight",
+      "pts_bbox_head.transformer.query_decoder._layers.4.transformer_layers.0.attn.out_proj.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.4.transformer_layers.2.attn.in_proj_weight",
+      "pts_bbox_head.transformer.query_decoder._layers.4.transformer_layers.2.attn.out_proj.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.4.transformer_layers.4._layers.0.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.4.transformer_layers.4._layers.3.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.5.transformer_layers.0.attn.in_proj_weight",
+      "pts_bbox_head.transformer.query_decoder._layers.5.transformer_layers.0.attn.out_proj.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.5.transformer_layers.2.attn.in_proj_weight",
+      "pts_bbox_head.transformer.query_decoder._layers.5.transformer_layers.2.attn.out_proj.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.5.transformer_layers.4._layers.0.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.5.transformer_layers.4._layers.3.weight",
+      "pts_bbox_head.motion_decoder._layers.0.transformer_layers.0.attn.in_proj_weight",
+      "pts_bbox_head.motion_decoder._layers.0.transformer_layers.0.attn.out_proj.weight",
+      "pts_bbox_head.motion_decoder._layers.0.transformer_layers.2._layers.0.weight",
+      "pts_bbox_head.motion_decoder._layers.0.transformer_layers.2._layers.3.weight",
+      "pts_bbox_head.motion_mode_query.weight",
+      "pts_bbox_head.memory_query.weight",
+      "pts_bbox_head.scene_time_embedding.0.weight",
+      "pts_bbox_head.memory_decoder_cq._layers.0.transformer_layers.0.attn.in_proj_weight",
+      "pts_bbox_head.memory_decoder_cq._layers.0.transformer_layers.0.attn.out_proj.weight",
+      "pts_bbox_head.memory_decoder_cq._layers.0.transformer_layers.2._layers.0.weight",
+      "pts_bbox_head.memory_decoder_cq._layers.0.transformer_layers.2._layers.3.weight",
+      "pts_bbox_head.memory_decoder_mq._layers.0.transformer_layers.0.attn.in_proj_weight",
+      "pts_bbox_head.memory_decoder_mq._layers.0.transformer_layers.0.attn.out_proj.weight",
+      "pts_bbox_head.memory_decoder_mq._layers.0.transformer_layers.2._layers.0.weight",
+      "pts_bbox_head.memory_decoder_mq._layers.0.transformer_layers.2._layers.3.weight",
+      "pts_bbox_head.tl_branches.0.0.weight",
+      "pts_bbox_head.tl_branches.0.3.weight",
+      "pts_bbox_head.tl_branches.0.6.weight",
+      "pts_bbox_head.query_pos.0.weight",
+      "pts_bbox_head.query_pos.2.weight",
+      "pts_bbox_head.time_embedding.0.weight",
+      "pts_bbox_head.ego_pose_pe.reduce.0.weight",
+      "pts_bbox_head.ego_pose_pe.gamma.weight",
+      "pts_bbox_head.ego_pose_pe.beta.weight",
+      "map_head.cls_branches.0.0.weight",
+      "map_head.cls_branches.0.3.weight",
+      "map_head.cls_branches.0.6.weight",
+      "map_head.reg_branches.0.0.weight",
+      "map_head.reg_branches.0.2.weight",
+      "map_head.reg_branches.0.4.weight",
+      "map_head.input_projection.weight",
+      "map_head.output_projection.weight",
+      "map_head.reference_points_lane.weight",
+      "map_head.points_embedding_lane.weight",
+      "map_head.instance_embedding_lane.weight",
+      "map_head.query_embedding.weight",
+      "map_head.transformer.query_decoder._layers.0.transformer_layers.0.attn.in_proj_weight",
+      "map_head.transformer.query_decoder._layers.0.transformer_layers.0.attn.out_proj.weight",
+      "map_head.transformer.query_decoder._layers.0.transformer_layers.2.attn.in_proj_weight",
+      "map_head.transformer.query_decoder._layers.0.transformer_layers.2.attn.out_proj.weight",
+      "map_head.transformer.query_decoder._layers.0.transformer_layers.4._layers.0.weight",
+      "map_head.transformer.query_decoder._layers.0.transformer_layers.4._layers.3.weight",
+      "map_head.transformer.query_decoder._layers.1.transformer_layers.0.attn.in_proj_weight",
+      "map_head.transformer.query_decoder._layers.1.transformer_layers.0.attn.out_proj.weight",
+      "map_head.transformer.query_decoder._layers.1.transformer_layers.2.attn.in_proj_weight",
+      "map_head.transformer.query_decoder._layers.1.transformer_layers.2.attn.out_proj.weight",
+      "map_head.transformer.query_decoder._layers.1.transformer_layers.4._layers.0.weight",
+      "map_head.transformer.query_decoder._layers.1.transformer_layers.4._layers.3.weight",
+      "map_head.transformer.query_decoder._layers.2.transformer_layers.0.attn.in_proj_weight",
+      "map_head.transformer.query_decoder._layers.2.transformer_layers.0.attn.out_proj.weight",
+      "map_head.transformer.query_decoder._layers.2.transformer_layers.2.attn.in_proj_weight",
+      "map_head.transformer.query_decoder._layers.2.transformer_layers.2.attn.out_proj.weight",
+      "map_head.transformer.query_decoder._layers.2.transformer_layers.4._layers.0.weight",
+      "map_head.transformer.query_decoder._layers.2.transformer_layers.4._layers.3.weight",
+      "map_head.transformer.query_decoder._layers.3.transformer_layers.0.attn.in_proj_weight",
+      "map_head.transformer.query_decoder._layers.3.transformer_layers.0.attn.out_proj.weight",
+      "map_head.transformer.query_decoder._layers.3.transformer_layers.2.attn.in_proj_weight",
+      "map_head.transformer.query_decoder._layers.3.transformer_layers.2.attn.out_proj.weight",
+      "map_head.transformer.query_decoder._layers.3.transformer_layers.4._layers.0.weight",
+      "map_head.transformer.query_decoder._layers.3.transformer_layers.4._layers.3.weight",
+      "map_head.transformer.query_decoder._layers.4.transformer_layers.0.attn.in_proj_weight",
+      "map_head.transformer.query_decoder._layers.4.transformer_layers.0.attn.out_proj.weight",
+      "map_head.transformer.query_decoder._layers.4.transformer_layers.2.attn.in_proj_weight",
+      "map_head.transformer.query_decoder._layers.4.transformer_layers.2.attn.out_proj.weight",
+      "map_head.transformer.query_decoder._layers.4.transformer_layers.4._layers.0.weight",
+      "map_head.transformer.query_decoder._layers.4.transformer_layers.4._layers.3.weight",
+      "map_head.transformer.query_decoder._layers.5.transformer_layers.0.attn.in_proj_weight",
+      "map_head.transformer.query_decoder._layers.5.transformer_layers.0.attn.out_proj.weight",
+      "map_head.transformer.query_decoder._layers.5.transformer_layers.2.attn.in_proj_weight",
+      "map_head.transformer.query_decoder._layers.5.transformer_layers.2.attn.out_proj.weight",
+      "map_head.transformer.query_decoder._layers.5.transformer_layers.4._layers.0.weight",
+      "map_head.transformer.query_decoder._layers.5.transformer_layers.4._layers.3.weight",
+      "position_encoder.0.weight",
+      "position_encoder.2.weight",
+      "lm_head.base_model.model.model.embed_tokens.weight",
+      "lm_head.base_model.model.model.layers.0.self_attn.q_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.0.self_attn.q_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.0.self_attn.k_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.0.self_attn.k_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.0.self_attn.v_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.0.self_attn.v_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.0.self_attn.o_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.0.self_attn.o_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.1.self_attn.q_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.1.self_attn.q_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.1.self_attn.k_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.1.self_attn.k_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.1.self_attn.v_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.1.self_attn.v_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.1.self_attn.o_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.1.self_attn.o_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.2.self_attn.q_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.2.self_attn.q_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.2.self_attn.k_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.2.self_attn.k_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.2.self_attn.v_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.2.self_attn.v_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.2.self_attn.o_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.2.self_attn.o_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.3.self_attn.q_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.3.self_attn.q_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.3.self_attn.k_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.3.self_attn.k_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.3.self_attn.v_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.3.self_attn.v_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.3.self_attn.o_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.3.self_attn.o_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.4.self_attn.q_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.4.self_attn.q_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.4.self_attn.k_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.4.self_attn.k_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.4.self_attn.v_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.4.self_attn.v_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.4.self_attn.o_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.4.self_attn.o_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.5.self_attn.q_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.5.self_attn.q_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.5.self_attn.k_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.5.self_attn.k_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.5.self_attn.v_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.5.self_attn.v_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.5.self_attn.o_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.5.self_attn.o_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.6.self_attn.q_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.6.self_attn.q_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.6.self_attn.k_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.6.self_attn.k_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.6.self_attn.v_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.6.self_attn.v_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.6.self_attn.o_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.6.self_attn.o_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.7.self_attn.q_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.7.self_attn.q_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.7.self_attn.k_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.7.self_attn.k_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.7.self_attn.v_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.7.self_attn.v_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.7.self_attn.o_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.7.self_attn.o_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.8.self_attn.q_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.8.self_attn.q_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.8.self_attn.k_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.8.self_attn.k_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.8.self_attn.v_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.8.self_attn.v_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.8.self_attn.o_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.8.self_attn.o_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.9.self_attn.q_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.9.self_attn.q_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.9.self_attn.k_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.9.self_attn.k_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.9.self_attn.v_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.9.self_attn.v_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.9.self_attn.o_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.9.self_attn.o_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.10.self_attn.q_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.10.self_attn.q_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.10.self_attn.k_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.10.self_attn.k_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.10.self_attn.v_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.10.self_attn.v_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.10.self_attn.o_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.10.self_attn.o_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.11.self_attn.q_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.11.self_attn.q_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.11.self_attn.k_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.11.self_attn.k_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.11.self_attn.v_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.11.self_attn.v_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.11.self_attn.o_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.11.self_attn.o_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.12.self_attn.q_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.12.self_attn.q_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.12.self_attn.k_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.12.self_attn.k_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.12.self_attn.v_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.12.self_attn.v_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.12.self_attn.o_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.12.self_attn.o_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.13.self_attn.q_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.13.self_attn.q_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.13.self_attn.k_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.13.self_attn.k_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.13.self_attn.v_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.13.self_attn.v_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.13.self_attn.o_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.13.self_attn.o_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.14.self_attn.q_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.14.self_attn.q_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.14.self_attn.k_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.14.self_attn.k_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.14.self_attn.v_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.14.self_attn.v_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.14.self_attn.o_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.14.self_attn.o_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.15.self_attn.q_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.15.self_attn.q_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.15.self_attn.k_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.15.self_attn.k_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.15.self_attn.v_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.15.self_attn.v_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.15.self_attn.o_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.15.self_attn.o_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.16.self_attn.q_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.16.self_attn.q_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.16.self_attn.k_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.16.self_attn.k_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.16.self_attn.v_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.16.self_attn.v_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.16.self_attn.o_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.16.self_attn.o_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.17.self_attn.q_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.17.self_attn.q_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.17.self_attn.k_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.17.self_attn.k_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.17.self_attn.v_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.17.self_attn.v_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.17.self_attn.o_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.17.self_attn.o_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.18.self_attn.q_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.18.self_attn.q_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.18.self_attn.k_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.18.self_attn.k_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.18.self_attn.v_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.18.self_attn.v_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.18.self_attn.o_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.18.self_attn.o_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.19.self_attn.q_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.19.self_attn.q_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.19.self_attn.k_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.19.self_attn.k_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.19.self_attn.v_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.19.self_attn.v_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.19.self_attn.o_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.19.self_attn.o_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.20.self_attn.q_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.20.self_attn.q_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.20.self_attn.k_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.20.self_attn.k_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.20.self_attn.v_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.20.self_attn.v_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.20.self_attn.o_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.20.self_attn.o_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.21.self_attn.q_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.21.self_attn.q_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.21.self_attn.k_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.21.self_attn.k_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.21.self_attn.v_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.21.self_attn.v_proj.lora_B.default.weight",
+      "lm_head.base_model.model.model.layers.21.self_attn.o_proj.lora_A.default.weight",
+      "lm_head.base_model.model.model.layers.21.self_attn.o_proj.lora_B.default.weight",
+      "lm_head.base_model.model.lm_head.weight",
+      "present_distribution.encoder.conv1.weight",
+      "present_distribution.encoder.conv2.weight",
+      "present_distribution.encoder.conv3.weight",
+      "present_distribution.last_conv.1.weight",
+      "future_distribution.encoder.conv1.weight",
+      "future_distribution.encoder.conv2.weight",
+      "future_distribution.encoder.conv3.weight",
+      "future_distribution.last_conv.1.weight",
+      "predict_model.gru.weight_ih_l0",
+      "predict_model.gru.weight_hh_l0",
+      "predict_model.gru.weight_ih_l1",
+      "predict_model.gru.weight_hh_l1",
+      "predict_model.linear1.weight",
+      "predict_model.linear2.weight",
+      "predict_model.linear3.weight",
+      "ego_fut_decoder.0.weight",
+      "ego_fut_decoder.2.weight",
+      "ego_fut_decoder.4.weight"
+    ],
+    "lr_scale": 4.0,
+    "lr": 0.00032,
+    "weight_decay": 1e-05
+  },
+  "layer_25_no_decay": {
+    "param_names": [
+      "pts_bbox_head.traj_branches.0.0.bias",
+      "pts_bbox_head.traj_branches.0.2.bias",
+      "pts_bbox_head.traj_branches.0.4.bias",
+      "pts_bbox_head.traj_cls_branches.0.0.bias",
+      "pts_bbox_head.traj_cls_branches.0.1.weight",
+      "pts_bbox_head.traj_cls_branches.0.1.bias",
+      "pts_bbox_head.traj_cls_branches.0.3.bias",
+      "pts_bbox_head.traj_cls_branches.0.4.weight",
+      "pts_bbox_head.traj_cls_branches.0.4.bias",
+      "pts_bbox_head.traj_cls_branches.0.6.bias",
+      "pts_bbox_head.cls_branches.0.0.bias",
+      "pts_bbox_head.cls_branches.0.1.weight",
+      "pts_bbox_head.cls_branches.0.1.bias",
+      "pts_bbox_head.cls_branches.0.3.bias",
+      "pts_bbox_head.cls_branches.0.4.weight",
+      "pts_bbox_head.cls_branches.0.4.bias",
+      "pts_bbox_head.cls_branches.0.6.bias",
+      "pts_bbox_head.reg_branches.0.0.bias",
+      "pts_bbox_head.reg_branches.0.2.bias",
+      "pts_bbox_head.reg_branches.0.4.bias",
+      "pts_bbox_head.input_projection.bias",
+      "pts_bbox_head.output_projection.bias",
+      "pts_bbox_head.can_bus_embed.0.bias",
+      "pts_bbox_head.can_bus_embed.2.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.0.transformer_layers.0.attn.in_proj_bias",
+      "pts_bbox_head.transformer.query_decoder._layers.0.transformer_layers.0.attn.out_proj.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.0.transformer_layers.1.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.0.transformer_layers.1.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.0.transformer_layers.2.attn.in_proj_bias",
+      "pts_bbox_head.transformer.query_decoder._layers.0.transformer_layers.2.attn.out_proj.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.0.transformer_layers.3.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.0.transformer_layers.3.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.0.transformer_layers.4._layers.0.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.0.transformer_layers.4._layers.3.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.0.transformer_layers.5.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.0.transformer_layers.5.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.1.transformer_layers.0.attn.in_proj_bias",
+      "pts_bbox_head.transformer.query_decoder._layers.1.transformer_layers.0.attn.out_proj.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.1.transformer_layers.1.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.1.transformer_layers.1.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.1.transformer_layers.2.attn.in_proj_bias",
+      "pts_bbox_head.transformer.query_decoder._layers.1.transformer_layers.2.attn.out_proj.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.1.transformer_layers.3.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.1.transformer_layers.3.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.1.transformer_layers.4._layers.0.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.1.transformer_layers.4._layers.3.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.1.transformer_layers.5.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.1.transformer_layers.5.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.2.transformer_layers.0.attn.in_proj_bias",
+      "pts_bbox_head.transformer.query_decoder._layers.2.transformer_layers.0.attn.out_proj.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.2.transformer_layers.1.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.2.transformer_layers.1.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.2.transformer_layers.2.attn.in_proj_bias",
+      "pts_bbox_head.transformer.query_decoder._layers.2.transformer_layers.2.attn.out_proj.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.2.transformer_layers.3.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.2.transformer_layers.3.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.2.transformer_layers.4._layers.0.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.2.transformer_layers.4._layers.3.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.2.transformer_layers.5.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.2.transformer_layers.5.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.3.transformer_layers.0.attn.in_proj_bias",
+      "pts_bbox_head.transformer.query_decoder._layers.3.transformer_layers.0.attn.out_proj.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.3.transformer_layers.1.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.3.transformer_layers.1.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.3.transformer_layers.2.attn.in_proj_bias",
+      "pts_bbox_head.transformer.query_decoder._layers.3.transformer_layers.2.attn.out_proj.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.3.transformer_layers.3.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.3.transformer_layers.3.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.3.transformer_layers.4._layers.0.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.3.transformer_layers.4._layers.3.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.3.transformer_layers.5.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.3.transformer_layers.5.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.4.transformer_layers.0.attn.in_proj_bias",
+      "pts_bbox_head.transformer.query_decoder._layers.4.transformer_layers.0.attn.out_proj.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.4.transformer_layers.1.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.4.transformer_layers.1.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.4.transformer_layers.2.attn.in_proj_bias",
+      "pts_bbox_head.transformer.query_decoder._layers.4.transformer_layers.2.attn.out_proj.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.4.transformer_layers.3.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.4.transformer_layers.3.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.4.transformer_layers.4._layers.0.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.4.transformer_layers.4._layers.3.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.4.transformer_layers.5.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.4.transformer_layers.5.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.5.transformer_layers.0.attn.in_proj_bias",
+      "pts_bbox_head.transformer.query_decoder._layers.5.transformer_layers.0.attn.out_proj.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.5.transformer_layers.1.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.5.transformer_layers.1.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.5.transformer_layers.2.attn.in_proj_bias",
+      "pts_bbox_head.transformer.query_decoder._layers.5.transformer_layers.2.attn.out_proj.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.5.transformer_layers.3.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.5.transformer_layers.3.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.5.transformer_layers.4._layers.0.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.5.transformer_layers.4._layers.3.bias",
+      "pts_bbox_head.transformer.query_decoder._layers.5.transformer_layers.5.weight",
+      "pts_bbox_head.transformer.query_decoder._layers.5.transformer_layers.5.bias",
+      "pts_bbox_head.motion_decoder._layers.0.transformer_layers.1.weight",
+      "pts_bbox_head.motion_decoder._layers.0.transformer_layers.1.bias",
+      "pts_bbox_head.motion_decoder._layers.0.transformer_layers.2._layers.0.bias",
+      "pts_bbox_head.motion_decoder._layers.0.transformer_layers.2._layers.3.bias",
+      "pts_bbox_head.motion_decoder._layers.0.transformer_layers.3.weight",
+      "pts_bbox_head.motion_decoder._layers.0.transformer_layers.3.bias",
+      "pts_bbox_head.scene_time_embedding.0.bias",
+      "pts_bbox_head.scene_time_embedding.1.weight",
+      "pts_bbox_head.scene_time_embedding.1.bias",
+      "pts_bbox_head.memory_decoder_cq._layers.0.transformer_layers.1.weight",
+      "pts_bbox_head.memory_decoder_cq._layers.0.transformer_layers.1.bias",
+      "pts_bbox_head.memory_decoder_cq._layers.0.transformer_layers.2._layers.0.bias",
+      "pts_bbox_head.memory_decoder_cq._layers.0.transformer_layers.2._layers.3.bias",
+      "pts_bbox_head.memory_decoder_cq._layers.0.transformer_layers.3.weight",
+      "pts_bbox_head.memory_decoder_cq._layers.0.transformer_layers.3.bias",
+      "pts_bbox_head.memory_decoder_mq._layers.0.transformer_layers.1.weight",
+      "pts_bbox_head.memory_decoder_mq._layers.0.transformer_layers.1.bias",
+      "pts_bbox_head.memory_decoder_mq._layers.0.transformer_layers.2._layers.0.bias",
+      "pts_bbox_head.memory_decoder_mq._layers.0.transformer_layers.2._layers.3.bias",
+      "pts_bbox_head.memory_decoder_mq._layers.0.transformer_layers.3.weight",
+      "pts_bbox_head.memory_decoder_mq._layers.0.transformer_layers.3.bias",
+      "pts_bbox_head.tl_branches.0.0.bias",
+      "pts_bbox_head.tl_branches.0.1.weight",
+      "pts_bbox_head.tl_branches.0.1.bias",
+      "pts_bbox_head.tl_branches.0.3.bias",
+      "pts_bbox_head.tl_branches.0.4.weight",
+      "pts_bbox_head.tl_branches.0.4.bias",
+      "pts_bbox_head.tl_branches.0.6.bias",
+      "pts_bbox_head.query_pos.0.bias",
+      "pts_bbox_head.query_pos.2.bias",
+      "pts_bbox_head.time_embedding.0.bias",
+      "pts_bbox_head.time_embedding.1.weight",
+      "pts_bbox_head.time_embedding.1.bias",
+      "pts_bbox_head.ego_pose_pe.reduce.0.bias",
+      "pts_bbox_head.ego_pose_pe.gamma.bias",
+      "pts_bbox_head.ego_pose_pe.beta.bias",
+      "map_head.cls_branches.0.0.bias",
+      "map_head.cls_branches.0.1.weight",
+      "map_head.cls_branches.0.1.bias",
+      "map_head.cls_branches.0.3.bias",
+      "map_head.cls_branches.0.4.weight",
+      "map_head.cls_branches.0.4.bias",
+      "map_head.cls_branches.0.6.bias",
+      "map_head.reg_branches.0.0.bias",
+      "map_head.reg_branches.0.2.bias",
+      "map_head.reg_branches.0.4.bias",
+      "map_head.input_projection.bias",
+      "map_head.output_projection.bias",
+      "map_head.reference_points_lane.bias",
+      "map_head.transformer.query_decoder._layers.0.transformer_layers.0.attn.in_proj_bias",
+      "map_head.transformer.query_decoder._layers.0.transformer_layers.0.attn.out_proj.bias",
+      "map_head.transformer.query_decoder._layers.0.transformer_layers.1.weight",
+      "map_head.transformer.query_decoder._layers.0.transformer_layers.1.bias",
+      "map_head.transformer.query_decoder._layers.0.transformer_layers.2.attn.in_proj_bias",
+      "map_head.transformer.query_decoder._layers.0.transformer_layers.2.attn.out_proj.bias",
+      "map_head.transformer.query_decoder._layers.0.transformer_layers.3.weight",
+      "map_head.transformer.query_decoder._layers.0.transformer_layers.3.bias",
+      "map_head.transformer.query_decoder._layers.0.transformer_layers.4._layers.0.bias",
+      "map_head.transformer.query_decoder._layers.0.transformer_layers.4._layers.3.bias",
+      "map_head.transformer.query_decoder._layers.0.transformer_layers.5.weight",
+      "map_head.transformer.query_decoder._layers.0.transformer_layers.5.bias",
+      "map_head.transformer.query_decoder._layers.1.transformer_layers.0.attn.in_proj_bias",
+      "map_head.transformer.query_decoder._layers.1.transformer_layers.0.attn.out_proj.bias",
+      "map_head.transformer.query_decoder._layers.1.transformer_layers.1.weight",
+      "map_head.transformer.query_decoder._layers.1.transformer_layers.1.bias",
+      "map_head.transformer.query_decoder._layers.1.transformer_layers.2.attn.in_proj_bias",
+      "map_head.transformer.query_decoder._layers.1.transformer_layers.2.attn.out_proj.bias",
+      "map_head.transformer.query_decoder._layers.1.transformer_layers.3.weight",
+      "map_head.transformer.query_decoder._layers.1.transformer_layers.3.bias",
+      "map_head.transformer.query_decoder._layers.1.transformer_layers.4._layers.0.bias",
+      "map_head.transformer.query_decoder._layers.1.transformer_layers.4._layers.3.bias",
+      "map_head.transformer.query_decoder._layers.1.transformer_layers.5.weight",
+      "map_head.transformer.query_decoder._layers.1.transformer_layers.5.bias",
+      "map_head.transformer.query_decoder._layers.2.transformer_layers.0.attn.in_proj_bias",
+      "map_head.transformer.query_decoder._layers.2.transformer_layers.0.attn.out_proj.bias",
+      "map_head.transformer.query_decoder._layers.2.transformer_layers.1.weight",
+      "map_head.transformer.query_decoder._layers.2.transformer_layers.1.bias",
+      "map_head.transformer.query_decoder._layers.2.transformer_layers.2.attn.in_proj_bias",
+      "map_head.transformer.query_decoder._layers.2.transformer_layers.2.attn.out_proj.bias",
+      "map_head.transformer.query_decoder._layers.2.transformer_layers.3.weight",
+      "map_head.transformer.query_decoder._layers.2.transformer_layers.3.bias",
+      "map_head.transformer.query_decoder._layers.2.transformer_layers.4._layers.0.bias",
+      "map_head.transformer.query_decoder._layers.2.transformer_layers.4._layers.3.bias",
+      "map_head.transformer.query_decoder._layers.2.transformer_layers.5.weight",
+      "map_head.transformer.query_decoder._layers.2.transformer_layers.5.bias",
+      "map_head.transformer.query_decoder._layers.3.transformer_layers.0.attn.in_proj_bias",
+      "map_head.transformer.query_decoder._layers.3.transformer_layers.0.attn.out_proj.bias",
+      "map_head.transformer.query_decoder._layers.3.transformer_layers.1.weight",
+      "map_head.transformer.query_decoder._layers.3.transformer_layers.1.bias",
+      "map_head.transformer.query_decoder._layers.3.transformer_layers.2.attn.in_proj_bias",
+      "map_head.transformer.query_decoder._layers.3.transformer_layers.2.attn.out_proj.bias",
+      "map_head.transformer.query_decoder._layers.3.transformer_layers.3.weight",
+      "map_head.transformer.query_decoder._layers.3.transformer_layers.3.bias",
+      "map_head.transformer.query_decoder._layers.3.transformer_layers.4._layers.0.bias",
+      "map_head.transformer.query_decoder._layers.3.transformer_layers.4._layers.3.bias",
+      "map_head.transformer.query_decoder._layers.3.transformer_layers.5.weight",
+      "map_head.transformer.query_decoder._layers.3.transformer_layers.5.bias",
+      "map_head.transformer.query_decoder._layers.4.transformer_layers.0.attn.in_proj_bias",
+      "map_head.transformer.query_decoder._layers.4.transformer_layers.0.attn.out_proj.bias",
+      "map_head.transformer.query_decoder._layers.4.transformer_layers.1.weight",
+      "map_head.transformer.query_decoder._layers.4.transformer_layers.1.bias",
+      "map_head.transformer.query_decoder._layers.4.transformer_layers.2.attn.in_proj_bias",
+      "map_head.transformer.query_decoder._layers.4.transformer_layers.2.attn.out_proj.bias",
+      "map_head.transformer.query_decoder._layers.4.transformer_layers.3.weight",
+      "map_head.transformer.query_decoder._layers.4.transformer_layers.3.bias",
+      "map_head.transformer.query_decoder._layers.4.transformer_layers.4._layers.0.bias",
+      "map_head.transformer.query_decoder._layers.4.transformer_layers.4._layers.3.bias",
+      "map_head.transformer.query_decoder._layers.4.transformer_layers.5.weight",
+      "map_head.transformer.query_decoder._layers.4.transformer_layers.5.bias",
+      "map_head.transformer.query_decoder._layers.5.transformer_layers.0.attn.in_proj_bias",
+      "map_head.transformer.query_decoder._layers.5.transformer_layers.0.attn.out_proj.bias",
+      "map_head.transformer.query_decoder._layers.5.transformer_layers.1.weight",
+      "map_head.transformer.query_decoder._layers.5.transformer_layers.1.bias",
+      "map_head.transformer.query_decoder._layers.5.transformer_layers.2.attn.in_proj_bias",
+      "map_head.transformer.query_decoder._layers.5.transformer_layers.2.attn.out_proj.bias",
+      "map_head.transformer.query_decoder._layers.5.transformer_layers.3.weight",
+      "map_head.transformer.query_decoder._layers.5.transformer_layers.3.bias",
+      "map_head.transformer.query_decoder._layers.5.transformer_layers.4._layers.0.bias",
+      "map_head.transformer.query_decoder._layers.5.transformer_layers.4._layers.3.bias",
+      "map_head.transformer.query_decoder._layers.5.transformer_layers.5.weight",
+      "map_head.transformer.query_decoder._layers.5.transformer_layers.5.bias",
+      "position_encoder.0.bias",
+      "position_encoder.2.bias",
+      "present_distribution.encoder.conv1.bias",
+      "present_distribution.encoder.conv2.bias",
+      "present_distribution.encoder.conv3.bias",
+      "present_distribution.last_conv.1.bias",
+      "future_distribution.encoder.conv1.bias",
+      "future_distribution.encoder.conv2.bias",
+      "future_distribution.encoder.conv3.bias",
+      "future_distribution.last_conv.1.bias",
+      "predict_model.gru.bias_ih_l0",
+      "predict_model.gru.bias_hh_l0",
+      "predict_model.gru.bias_ih_l1",
+      "predict_model.gru.bias_hh_l1",
+      "predict_model.linear1.bias",
+      "predict_model.linear2.bias",
+      "predict_model.linear3.bias",
+      "ego_fut_decoder.0.bias",
+      "ego_fut_decoder.2.bias",
+      "ego_fut_decoder.4.bias"
+    ],
+    "lr_scale": 4.0,
+    "lr": 0.00032,
+    "weight_decay": 0.0
+  },
+  "layer_0_decay": {
+    "param_names": [
+      "img_backbone.pos_embed",
+      "img_backbone.patch_embed.proj.weight"
+    ],
+    "lr_scale": 0.0717897987691853,
+    "lr": 5.7431839015348245e-06,
+    "weight_decay": 1e-05
+  },
+  "layer_0_no_decay": {
+    "param_names": [
+      "img_backbone.patch_embed.proj.bias"
+    ],
+    "lr_scale": 0.0717897987691853,
+    "lr": 5.7431839015348245e-06,
+    "weight_decay": 0.0
+  },
+  "layer_1_no_decay": {
+    "param_names": [
+      "img_backbone.blocks.0.norm1.weight",
+      "img_backbone.blocks.0.norm1.bias",
+      "img_backbone.blocks.0.attn.q_bias",
+      "img_backbone.blocks.0.attn.v_bias",
+      "img_backbone.blocks.0.attn.proj.bias",
+      "img_backbone.blocks.0.norm2.weight",
+      "img_backbone.blocks.0.norm2.bias",
+      "img_backbone.blocks.0.mlp.w1.bias",
+      "img_backbone.blocks.0.mlp.w2.bias",
+      "img_backbone.blocks.0.mlp.ffn_ln.weight",
+      "img_backbone.blocks.0.mlp.ffn_ln.bias",
+      "img_backbone.blocks.0.mlp.w3.bias"
+    ],
+    "lr_scale": 0.07976644307687256,
+    "lr": 6.381315446149805e-06,
+    "weight_decay": 0.0
+  },
+  "layer_1_decay": {
+    "param_names": [
+      "img_backbone.blocks.0.attn.q_proj.weight",
+      "img_backbone.blocks.0.attn.k_proj.weight",
+      "img_backbone.blocks.0.attn.v_proj.weight",
+      "img_backbone.blocks.0.attn.proj.weight",
+      "img_backbone.blocks.0.mlp.w1.weight",
+      "img_backbone.blocks.0.mlp.w2.weight",
+      "img_backbone.blocks.0.mlp.w3.weight"
+    ],
+    "lr_scale": 0.07976644307687256,
+    "lr": 6.381315446149805e-06,
+    "weight_decay": 1e-05
+  },
+  "layer_2_no_decay": {
+    "param_names": [
+      "img_backbone.blocks.1.norm1.weight",
+      "img_backbone.blocks.1.norm1.bias",
+      "img_backbone.blocks.1.attn.q_bias",
+      "img_backbone.blocks.1.attn.v_bias",
+      "img_backbone.blocks.1.attn.proj.bias",
+      "img_backbone.blocks.1.norm2.weight",
+      "img_backbone.blocks.1.norm2.bias",
+      "img_backbone.blocks.1.mlp.w1.bias",
+      "img_backbone.blocks.1.mlp.w2.bias",
+      "img_backbone.blocks.1.mlp.ffn_ln.weight",
+      "img_backbone.blocks.1.mlp.ffn_ln.bias",
+      "img_backbone.blocks.1.mlp.w3.bias"
+    ],
+    "lr_scale": 0.08862938119652507,
+    "lr": 7.090350495722006e-06,
+    "weight_decay": 0.0
+  },
+  "layer_2_decay": {
+    "param_names": [
+      "img_backbone.blocks.1.attn.q_proj.weight",
+      "img_backbone.blocks.1.attn.k_proj.weight",
+      "img_backbone.blocks.1.attn.v_proj.weight",
+      "img_backbone.blocks.1.attn.proj.weight",
+      "img_backbone.blocks.1.mlp.w1.weight",
+      "img_backbone.blocks.1.mlp.w2.weight",
+      "img_backbone.blocks.1.mlp.w3.weight"
+    ],
+    "lr_scale": 0.08862938119652507,
+    "lr": 7.090350495722006e-06,
+    "weight_decay": 1e-05
+  },
+  "layer_3_no_decay": {
+    "param_names": [
+      "img_backbone.blocks.2.norm1.weight",
+      "img_backbone.blocks.2.norm1.bias",
+      "img_backbone.blocks.2.attn.q_bias",
+      "img_backbone.blocks.2.attn.v_bias",
+      "img_backbone.blocks.2.attn.proj.bias",
+      "img_backbone.blocks.2.norm2.weight",
+      "img_backbone.blocks.2.norm2.bias",
+      "img_backbone.blocks.2.mlp.w1.bias",
+      "img_backbone.blocks.2.mlp.w2.bias",
+      "img_backbone.blocks.2.mlp.ffn_ln.weight",
+      "img_backbone.blocks.2.mlp.ffn_ln.bias",
+      "img_backbone.blocks.2.mlp.w3.bias"
+    ],
+    "lr_scale": 0.09847709021836118,
+    "lr": 7.878167217468896e-06,
+    "weight_decay": 0.0
+  },
+  "layer_3_decay": {
+    "param_names": [
+      "img_backbone.blocks.2.attn.q_proj.weight",
+      "img_backbone.blocks.2.attn.k_proj.weight",
+      "img_backbone.blocks.2.attn.v_proj.weight",
+      "img_backbone.blocks.2.attn.proj.weight",
+      "img_backbone.blocks.2.mlp.w1.weight",
+      "img_backbone.blocks.2.mlp.w2.weight",
+      "img_backbone.blocks.2.mlp.w3.weight"
+    ],
+    "lr_scale": 0.09847709021836118,
+    "lr": 7.878167217468896e-06,
+    "weight_decay": 1e-05
+  },
+  "layer_4_no_decay": {
+    "param_names": [
+      "img_backbone.blocks.3.norm1.weight",
+      "img_backbone.blocks.3.norm1.bias",
+      "img_backbone.blocks.3.attn.q_bias",
+      "img_backbone.blocks.3.attn.v_bias",
+      "img_backbone.blocks.3.attn.proj.bias",
+      "img_backbone.blocks.3.norm2.weight",
+      "img_backbone.blocks.3.norm2.bias",
+      "img_backbone.blocks.3.mlp.w1.bias",
+      "img_backbone.blocks.3.mlp.w2.bias",
+      "img_backbone.blocks.3.mlp.ffn_ln.weight",
+      "img_backbone.blocks.3.mlp.ffn_ln.bias",
+      "img_backbone.blocks.3.mlp.w3.bias"
+    ],
+    "lr_scale": 0.10941898913151242,
+    "lr": 8.753519130520995e-06,
+    "weight_decay": 0.0
+  },
+  "layer_4_decay": {
+    "param_names": [
+      "img_backbone.blocks.3.attn.q_proj.weight",
+      "img_backbone.blocks.3.attn.k_proj.weight",
+      "img_backbone.blocks.3.attn.v_proj.weight",
+      "img_backbone.blocks.3.attn.proj.weight",
+      "img_backbone.blocks.3.mlp.w1.weight",
+      "img_backbone.blocks.3.mlp.w2.weight",
+      "img_backbone.blocks.3.mlp.w3.weight"
+    ],
+    "lr_scale": 0.10941898913151242,
+    "lr": 8.753519130520995e-06,
+    "weight_decay": 1e-05
+  },
+  "layer_5_no_decay": {
+    "param_names": [
+      "img_backbone.blocks.4.norm1.weight",
+      "img_backbone.blocks.4.norm1.bias",
+      "img_backbone.blocks.4.attn.q_bias",
+      "img_backbone.blocks.4.attn.v_bias",
+      "img_backbone.blocks.4.attn.proj.bias",
+      "img_backbone.blocks.4.norm2.weight",
+      "img_backbone.blocks.4.norm2.bias",
+      "img_backbone.blocks.4.mlp.w1.bias",
+      "img_backbone.blocks.4.mlp.w2.bias",
+      "img_backbone.blocks.4.mlp.ffn_ln.weight",
+      "img_backbone.blocks.4.mlp.ffn_ln.bias",
+      "img_backbone.blocks.4.mlp.w3.bias"
+    ],
+    "lr_scale": 0.12157665459056935,
+    "lr": 9.726132367245548e-06,
+    "weight_decay": 0.0
+  },
+  "layer_5_decay": {
+    "param_names": [
+      "img_backbone.blocks.4.attn.q_proj.weight",
+      "img_backbone.blocks.4.attn.k_proj.weight",
+      "img_backbone.blocks.4.attn.v_proj.weight",
+      "img_backbone.blocks.4.attn.proj.weight",
+      "img_backbone.blocks.4.mlp.w1.weight",
+      "img_backbone.blocks.4.mlp.w2.weight",
+      "img_backbone.blocks.4.mlp.w3.weight"
+    ],
+    "lr_scale": 0.12157665459056935,
+    "lr": 9.726132367245548e-06,
+    "weight_decay": 1e-05
+  },
+  "layer_6_no_decay": {
+    "param_names": [
+      "img_backbone.blocks.5.norm1.weight",
+      "img_backbone.blocks.5.norm1.bias",
+      "img_backbone.blocks.5.attn.q_bias",
+      "img_backbone.blocks.5.attn.v_bias",
+      "img_backbone.blocks.5.attn.proj.bias",
+      "img_backbone.blocks.5.norm2.weight",
+      "img_backbone.blocks.5.norm2.bias",
+      "img_backbone.blocks.5.mlp.w1.bias",
+      "img_backbone.blocks.5.mlp.w2.bias",
+      "img_backbone.blocks.5.mlp.ffn_ln.weight",
+      "img_backbone.blocks.5.mlp.ffn_ln.bias",
+      "img_backbone.blocks.5.mlp.w3.bias"
+    ],
+    "lr_scale": 0.13508517176729928,
+    "lr": 1.0806813741383944e-05,
+    "weight_decay": 0.0
+  },
+  "layer_6_decay": {
+    "param_names": [
+      "img_backbone.blocks.5.attn.q_proj.weight",
+      "img_backbone.blocks.5.attn.k_proj.weight",
+      "img_backbone.blocks.5.attn.v_proj.weight",
+      "img_backbone.blocks.5.attn.proj.weight",
+      "img_backbone.blocks.5.mlp.w1.weight",
+      "img_backbone.blocks.5.mlp.w2.weight",
+      "img_backbone.blocks.5.mlp.w3.weight"
+    ],
+    "lr_scale": 0.13508517176729928,
+    "lr": 1.0806813741383944e-05,
+    "weight_decay": 1e-05
+  },
+  "layer_7_no_decay": {
+    "param_names": [
+      "img_backbone.blocks.6.norm1.weight",
+      "img_backbone.blocks.6.norm1.bias",
+      "img_backbone.blocks.6.attn.q_bias",
+      "img_backbone.blocks.6.attn.v_bias",
+      "img_backbone.blocks.6.attn.proj.bias",
+      "img_backbone.blocks.6.norm2.weight",
+      "img_backbone.blocks.6.norm2.bias",
+      "img_backbone.blocks.6.mlp.w1.bias",
+      "img_backbone.blocks.6.mlp.w2.bias",
+      "img_backbone.blocks.6.mlp.ffn_ln.weight",
+      "img_backbone.blocks.6.mlp.ffn_ln.bias",
+      "img_backbone.blocks.6.mlp.w3.bias"
+    ],
+    "lr_scale": 0.15009463529699918,
+    "lr": 1.2007570823759936e-05,
+    "weight_decay": 0.0
+  },
+  "layer_7_decay": {
+    "param_names": [
+      "img_backbone.blocks.6.attn.q_proj.weight",
+      "img_backbone.blocks.6.attn.k_proj.weight",
+      "img_backbone.blocks.6.attn.v_proj.weight",
+      "img_backbone.blocks.6.attn.proj.weight",
+      "img_backbone.blocks.6.mlp.w1.weight",
+      "img_backbone.blocks.6.mlp.w2.weight",
+      "img_backbone.blocks.6.mlp.w3.weight"
+    ],
+    "lr_scale": 0.15009463529699918,
+    "lr": 1.2007570823759936e-05,
+    "weight_decay": 1e-05
+  },
+  "layer_8_no_decay": {
+    "param_names": [
+      "img_backbone.blocks.7.norm1.weight",
+      "img_backbone.blocks.7.norm1.bias",
+      "img_backbone.blocks.7.attn.q_bias",
+      "img_backbone.blocks.7.attn.v_bias",
+      "img_backbone.blocks.7.attn.proj.bias",
+      "img_backbone.blocks.7.norm2.weight",
+      "img_backbone.blocks.7.norm2.bias",
+      "img_backbone.blocks.7.mlp.w1.bias",
+      "img_backbone.blocks.7.mlp.w2.bias",
+      "img_backbone.blocks.7.mlp.ffn_ln.weight",
+      "img_backbone.blocks.7.mlp.ffn_ln.bias",
+      "img_backbone.blocks.7.mlp.w3.bias"
+    ],
+    "lr_scale": 0.16677181699666577,
+    "lr": 1.3341745359733262e-05,
+    "weight_decay": 0.0
+  },
+  "layer_8_decay": {
+    "param_names": [
+      "img_backbone.blocks.7.attn.q_proj.weight",
+      "img_backbone.blocks.7.attn.k_proj.weight",
+      "img_backbone.blocks.7.attn.v_proj.weight",
+      "img_backbone.blocks.7.attn.proj.weight",
+      "img_backbone.blocks.7.mlp.w1.weight",
+      "img_backbone.blocks.7.mlp.w2.weight",
+      "img_backbone.blocks.7.mlp.w3.weight"
+    ],
+    "lr_scale": 0.16677181699666577,
+    "lr": 1.3341745359733262e-05,
+    "weight_decay": 1e-05
+  },
+  "layer_9_no_decay": {
+    "param_names": [
+      "img_backbone.blocks.8.norm1.weight",
+      "img_backbone.blocks.8.norm1.bias",
+      "img_backbone.blocks.8.attn.q_bias",
+      "img_backbone.blocks.8.attn.v_bias",
+      "img_backbone.blocks.8.attn.proj.bias",
+      "img_backbone.blocks.8.norm2.weight",
+      "img_backbone.blocks.8.norm2.bias",
+      "img_backbone.blocks.8.mlp.w1.bias",
+      "img_backbone.blocks.8.mlp.w2.bias",
+      "img_backbone.blocks.8.mlp.ffn_ln.weight",
+      "img_backbone.blocks.8.mlp.ffn_ln.bias",
+      "img_backbone.blocks.8.mlp.w3.bias"
+    ],
+    "lr_scale": 0.18530201888518416,
+    "lr": 1.4824161510814735e-05,
+    "weight_decay": 0.0
+  },
+  "layer_9_decay": {
+    "param_names": [
+      "img_backbone.blocks.8.attn.q_proj.weight",
+      "img_backbone.blocks.8.attn.k_proj.weight",
+      "img_backbone.blocks.8.attn.v_proj.weight",
+      "img_backbone.blocks.8.attn.proj.weight",
+      "img_backbone.blocks.8.mlp.w1.weight",
+      "img_backbone.blocks.8.mlp.w2.weight",
+      "img_backbone.blocks.8.mlp.w3.weight"
+    ],
+    "lr_scale": 0.18530201888518416,
+    "lr": 1.4824161510814735e-05,
+    "weight_decay": 1e-05
+  },
+  "layer_10_no_decay": {
+    "param_names": [
+      "img_backbone.blocks.9.norm1.weight",
+      "img_backbone.blocks.9.norm1.bias",
+      "img_backbone.blocks.9.attn.q_bias",
+      "img_backbone.blocks.9.attn.v_bias",
+      "img_backbone.blocks.9.attn.proj.bias",
+      "img_backbone.blocks.9.norm2.weight",
+      "img_backbone.blocks.9.norm2.bias",
+      "img_backbone.blocks.9.mlp.w1.bias",
+      "img_backbone.blocks.9.mlp.w2.bias",
+      "img_backbone.blocks.9.mlp.ffn_ln.weight",
+      "img_backbone.blocks.9.mlp.ffn_ln.bias",
+      "img_backbone.blocks.9.mlp.w3.bias"
+    ],
+    "lr_scale": 0.20589113209464907,
+    "lr": 1.6471290567571928e-05,
+    "weight_decay": 0.0
+  },
+  "layer_10_decay": {
+    "param_names": [
+      "img_backbone.blocks.9.attn.q_proj.weight",
+      "img_backbone.blocks.9.attn.k_proj.weight",
+      "img_backbone.blocks.9.attn.v_proj.weight",
+      "img_backbone.blocks.9.attn.proj.weight",
+      "img_backbone.blocks.9.mlp.w1.weight",
+      "img_backbone.blocks.9.mlp.w2.weight",
+      "img_backbone.blocks.9.mlp.w3.weight"
+    ],
+    "lr_scale": 0.20589113209464907,
+    "lr": 1.6471290567571928e-05,
+    "weight_decay": 1e-05
+  },
+  "layer_11_no_decay": {
+    "param_names": [
+      "img_backbone.blocks.10.norm1.weight",
+      "img_backbone.blocks.10.norm1.bias",
+      "img_backbone.blocks.10.attn.q_bias",
+      "img_backbone.blocks.10.attn.v_bias",
+      "img_backbone.blocks.10.attn.proj.bias",
+      "img_backbone.blocks.10.norm2.weight",
+      "img_backbone.blocks.10.norm2.bias",
+      "img_backbone.blocks.10.mlp.w1.bias",
+      "img_backbone.blocks.10.mlp.w2.bias",
+      "img_backbone.blocks.10.mlp.ffn_ln.weight",
+      "img_backbone.blocks.10.mlp.ffn_ln.bias",
+      "img_backbone.blocks.10.mlp.w3.bias"
+    ],
+    "lr_scale": 0.2287679245496101,
+    "lr": 1.8301433963968808e-05,
+    "weight_decay": 0.0
+  },
+  "layer_11_decay": {
+    "param_names": [
+      "img_backbone.blocks.10.attn.q_proj.weight",
+      "img_backbone.blocks.10.attn.k_proj.weight",
+      "img_backbone.blocks.10.attn.v_proj.weight",
+      "img_backbone.blocks.10.attn.proj.weight",
+      "img_backbone.blocks.10.mlp.w1.weight",
+      "img_backbone.blocks.10.mlp.w2.weight",
+      "img_backbone.blocks.10.mlp.w3.weight"
+    ],
+    "lr_scale": 0.2287679245496101,
+    "lr": 1.8301433963968808e-05,
+    "weight_decay": 1e-05
+  },
+  "layer_12_no_decay": {
+    "param_names": [
+      "img_backbone.blocks.11.norm1.weight",
+      "img_backbone.blocks.11.norm1.bias",
+      "img_backbone.blocks.11.attn.q_bias",
+      "img_backbone.blocks.11.attn.v_bias",
+      "img_backbone.blocks.11.attn.proj.bias",
+      "img_backbone.blocks.11.norm2.weight",
+      "img_backbone.blocks.11.norm2.bias",
+      "img_backbone.blocks.11.mlp.w1.bias",
+      "img_backbone.blocks.11.mlp.w2.bias",
+      "img_backbone.blocks.11.mlp.ffn_ln.weight",
+      "img_backbone.blocks.11.mlp.ffn_ln.bias",
+      "img_backbone.blocks.11.mlp.w3.bias"
+    ],
+    "lr_scale": 0.2541865828329001,
+    "lr": 2.0334926626632008e-05,
+    "weight_decay": 0.0
+  },
+  "layer_12_decay": {
+    "param_names": [
+      "img_backbone.blocks.11.attn.q_proj.weight",
+      "img_backbone.blocks.11.attn.k_proj.weight",
+      "img_backbone.blocks.11.attn.v_proj.weight",
+      "img_backbone.blocks.11.attn.proj.weight",
+      "img_backbone.blocks.11.mlp.w1.weight",
+      "img_backbone.blocks.11.mlp.w2.weight",
+      "img_backbone.blocks.11.mlp.w3.weight"
+    ],
+    "lr_scale": 0.2541865828329001,
+    "lr": 2.0334926626632008e-05,
+    "weight_decay": 1e-05
+  }
+}
+/mnt/sdb/swseo/Orion/mmcv/runner/hooks/optimizer.py:173: FutureWarning: `torch.cuda.amp.GradScaler(args...)` is deprecated. Please use `torch.amp.GradScaler('cuda', args...)` instead.
+  self.loss_scaler = GradScaler()
+2026-01-14 11:00:58,599 - 0.0.1 - INFO - Start running, host: root@LearningMachine3, work_dir: /mnt/sdb/swseo/Orion/adzoo/orion/work_dirs/orion_stage2_train
+2026-01-14 11:00:58,600 - 0.0.1 - INFO - Hooks will be executed in the following order:
+before_run:
+(VERY_HIGH   ) CosineAnnealingLrUpdaterHook       
+(ABOVE_NORMAL) Fp16OptimizerHook                  
+(NORMAL      ) CheckpointHook                     
+(NORMAL      ) CustomDistEvalHook                 
+(VERY_LOW    ) TextLoggerHook                     
+(VERY_LOW    ) TensorboardLoggerHook              
+ -------------------- 
+before_train_epoch:
+(VERY_HIGH   ) CosineAnnealingLrUpdaterHook       
+(NORMAL      ) CustomDistEvalHook                 
+(LOW         ) IterTimerHook                      
+(VERY_LOW    ) TextLoggerHook                     
+(VERY_LOW    ) TensorboardLoggerHook              
+ -------------------- 
+before_train_iter:
+(VERY_HIGH   ) CosineAnnealingLrUpdaterHook       
+(NORMAL      ) CustomDistEvalHook                 
+(LOW         ) IterTimerHook                      
+ -------------------- 
+after_train_iter:
+(ABOVE_NORMAL) Fp16OptimizerHook                  
+(NORMAL      ) CheckpointHook                     
+(NORMAL      ) CustomDistEvalHook                 
+(LOW         ) IterTimerHook                      
+(VERY_LOW    ) TextLoggerHook                     
+(VERY_LOW    ) TensorboardLoggerHook              
+ -------------------- 
+after_train_epoch:
+(NORMAL      ) CheckpointHook                     
+(NORMAL      ) CustomDistEvalHook                 
+(VERY_LOW    ) TextLoggerHook                     
+(VERY_LOW    ) TensorboardLoggerHook              
+ -------------------- 
+before_val_epoch:
+(LOW         ) IterTimerHook                      
+(VERY_LOW    ) TextLoggerHook                     
+(VERY_LOW    ) TensorboardLoggerHook              
+ -------------------- 
+before_val_iter:
+(LOW         ) IterTimerHook                      
+ -------------------- 
+after_val_iter:
+(LOW         ) IterTimerHook                      
+ -------------------- 
+after_val_epoch:
+(VERY_LOW    ) TextLoggerHook                     
+(VERY_LOW    ) TensorboardLoggerHook              
+ -------------------- 
+after_run:
+(VERY_LOW    ) TextLoggerHook                     
+(VERY_LOW    ) TensorboardLoggerHook              
+ -------------------- 
+2026-01-14 11:00:58,601 - 0.0.1 - INFO - workflow: [('train', 1)], max: 88038 iters
+2026-01-14 11:00:58,609 - 0.0.1 - INFO - Checkpoints will be saved to /mnt/sdb/swseo/Orion/adzoo/orion/work_dirs/orion_stage2_train by HardDiskBackend.
+/mnt/sdb/swseo/Orion/mmcv/utils/fp16_utils.py:126: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=True):
+/mnt/sdb/swseo/Orion/mmcv/models/utils/grid_mask.py:114: UserWarning: The given NumPy array is not writable, and PyTorch does not support non-writable tensors. This means writing to this tensor will result in undefined behavior. You may want to copy the array to protect its data or make it writable before converting it to a tensor. This type of warning will be suppressed for the rest of this program. (Triggered internally at ../torch/csrc/utils/tensor_numpy.cpp:206.)
+  mask = torch.from_numpy(mask).to(x.dtype).cuda()
+/mnt/sdb/swseo/orion_docker/envs/orion_hc/lib/python3.8/site-packages/torch/_dynamo/eval_frame.py:600: UserWarning: torch.utils.checkpoint: the use_reentrant parameter should be passed explicitly. In version 2.4 we will raise an exception if use_reentrant is not passed. use_reentrant=False is recommended, but if you need to preserve the current default behavior, you can pass use_reentrant=True. Refer to docs for more details on the differences between the two variants.
+  return fn(*args, **kwargs)
+/mnt/sdb/swseo/orion_docker/envs/orion_hc/lib/python3.8/site-packages/torch/functional.py:513: UserWarning: torch.meshgrid: in an upcoming release, it will be required to pass the indexing argument. (Triggered internally at ../aten/src/ATen/native/TensorShape.cpp:3609.)
+  return _VF.meshgrid(tensors, **kwargs)  # type: ignore[attr-defined]
+/mnt/sdb/swseo/Orion/mmcv/utils/fp16_utils.py:211: FutureWarning: `torch.cuda.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cuda', args...)` instead.
+  with autocast(enabled=False):
+/mnt/sdb/swseo/orion_docker/envs/orion_hc/lib/python3.8/site-packages/torch/utils/checkpoint.py:295: FutureWarning: `torch.cpu.amp.autocast(args...)` is deprecated. Please use `torch.amp.autocast('cpu', args...)` instead.
+  with torch.enable_grad(), device_autocast_ctx, torch.cpu.amp.autocast(**ctx.cpu_autocast_kwargs):  # type: ignore[attr-defined]
+/mnt/sdb/swseo/orion_docker/envs/orion_hc/lib/python3.8/site-packages/torch/autograd/graph.py:769: UserWarning: Grad strides do not match bucket view strides. This may indicate grad was not created according to the gradient layout contract, or that the param's strides changed since DDP was constructed.  This is not an error, but may impair performance.
+grad.sizes() = [64, 1030, 1], strides() = [1030, 1, 1030]
+bucket_view.sizes() = [64, 1030, 1], strides() = [1030, 1, 1] (Triggered internally at ../torch/csrc/distributed/c10d/reducer.cpp:327.)
+  return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+2026-01-14 11:01:25,394 - 0.0.1 - INFO - Iter [10/88038]	lr: 1.105e-04, eta: 2 days, 14:19:57, time: 2.549, data_time: 0.341, memory: 13004, loss_cls: 2.2295, loss_bbox: 3.8003, loss_traj: 3.5890, loss_traj_cls: 91.5925, loss_traffic: 0.0000, loss_affect: 0.0000, d0.loss_cls: 2.1416, d0.loss_bbox: 3.9129, d0.loss_traffic: 0.0000, d0.loss_affect: 0.0000, d1.loss_cls: 2.1501, d1.loss_bbox: 3.8883, d1.loss_traffic: 0.0000, d1.loss_affect: 0.0000, d2.loss_cls: 2.1556, d2.loss_bbox: 3.8261, d2.loss_traffic: 0.0000, d2.loss_affect: 0.0000, d3.loss_cls: 2.0965, d3.loss_bbox: 3.8540, d3.loss_traffic: 0.0000, d3.loss_affect: 0.0000, d4.loss_cls: 2.1729, d4.loss_bbox: 3.8343, d4.loss_traffic: 0.0000, d4.loss_affect: 0.0000, dn_loss_cls: 2.1671, dn_loss_bbox: 5.4749, dn_loss_traffic: 0.0000, dn_loss_affect: 0.0000, d0.dn_loss_cls: 2.0890, d0.dn_loss_bbox: 5.3817, d0.dn_loss_traffic: 0.0000, d0.dn_loss_affect: 0.0000, d1.dn_loss_cls: 2.0539, d1.dn_loss_bbox: 5.4477, d1.dn_loss_traffic: 0.0000, d1.dn_loss_affect: 0.0000, d2.dn_loss_cls: 2.1047, d2.dn_loss_bbox: 5.3663, d2.dn_loss_traffic: 0.0000, d2.dn_loss_affect: 0.0000, d3.dn_loss_cls: 2.0511, d3.dn_loss_bbox: 5.2593, d3.dn_loss_traffic: 0.0000, d3.dn_loss_affect: 0.0000, d4.dn_loss_cls: 2.1167, d4.dn_loss_bbox: 5.4616, d4.dn_loss_traffic: 0.0000, d4.dn_loss_affect: 0.0000, loss_cls_lane: 1.6382, loss_cls_H: 1.6554, loss_bbox_lane: 9.7603, loss_bbox_H: 9.7052, d0.loss_cls_lane: 1.6190, d0.loss_cls_H: 1.6244, d0.loss_bbox_lane: 9.6121, d0.loss_bbox_H: 9.5909, d1.loss_cls_lane: 1.6327, d1.loss_cls_H: 1.6380, d1.loss_bbox_lane: 9.6840, d1.loss_bbox_H: 9.6037, d2.loss_cls_lane: 1.6028, d2.loss_cls_H: 1.6121, d2.loss_bbox_lane: 9.4744, d2.loss_bbox_H: 9.3536, d3.loss_cls_lane: 1.6206, d3.loss_cls_H: 1.6383, d3.loss_bbox_lane: 9.3790, d3.loss_bbox_H: 9.2343, d4.loss_cls_lane: 1.6574, d4.loss_cls_H: 1.6711, d4.loss_bbox_lane: 9.7720, d4.loss_bbox_H: 9.6376, vlm_loss: 11.3593, loss_plan_reg: 0.6588, loss_plan_bound: 0.0000, loss_plan_col: 0.0000, loss_vae_gen: 7.9621, loss: 330.6149, grad_norm: nan
+2026-01-14 11:01:49,418 - 0.0.1 - INFO - Iter [20/88038]	lr: 1.148e-04, eta: 2 days, 12:31:54, time: 2.402, data_time: 0.043, memory: 13035, loss_cls: 1.5393, loss_bbox: 3.2361, loss_traj: 2.4277, loss_traj_cls: 0.6139, loss_traffic: 0.9160, loss_affect: 0.0000, d0.loss_cls: 1.6208, d0.loss_bbox: 3.1653, d0.loss_traffic: 0.9094, d0.loss_affect: 0.0000, d1.loss_cls: 1.5437, d1.loss_bbox: 3.1945, d1.loss_traffic: 0.8345, d1.loss_affect: 0.0000, d2.loss_cls: 1.5360, d2.loss_bbox: 3.2069, d2.loss_traffic: 0.8688, d2.loss_affect: 0.0000, d3.loss_cls: 1.5845, d3.loss_bbox: 3.1855, d3.loss_traffic: 0.8832, d3.loss_affect: 0.0000, d4.loss_cls: 1.5607, d4.loss_bbox: 3.2182, d4.loss_traffic: 0.8820, d4.loss_affect: 0.0000, dn_loss_cls: 1.2774, dn_loss_bbox: 3.2245, dn_loss_traffic: 0.9224, dn_loss_affect: 0.0000, d0.dn_loss_cls: 1.4870, d0.dn_loss_bbox: 3.3698, d0.dn_loss_traffic: 0.9027, d0.dn_loss_affect: 0.0000, d1.dn_loss_cls: 1.3291, d1.dn_loss_bbox: 3.4138, d1.dn_loss_traffic: 0.8453, d1.dn_loss_affect: 0.0000, d2.dn_loss_cls: 1.2851, d2.dn_loss_bbox: 3.3107, d2.dn_loss_traffic: 0.8655, d2.dn_loss_affect: 0.0000, d3.dn_loss_cls: 1.2086, d3.dn_loss_bbox: 3.4309, d3.dn_loss_traffic: 0.8935, d3.dn_loss_affect: 0.0000, d4.dn_loss_cls: 1.3047, d4.dn_loss_bbox: 3.2893, d4.dn_loss_traffic: 0.8819, d4.dn_loss_affect: 0.0000, loss_cls_lane: 1.2686, loss_cls_H: 1.2777, loss_bbox_lane: 5.7946, loss_bbox_H: 5.7568, d0.loss_cls_lane: 1.3701, d0.loss_cls_H: 1.3640, d0.loss_bbox_lane: 6.2581, d0.loss_bbox_H: 6.3114, d1.loss_cls_lane: 1.3211, d1.loss_cls_H: 1.3077, d1.loss_bbox_lane: 5.7041, d1.loss_bbox_H: 5.6821, d2.loss_cls_lane: 1.2906, d2.loss_cls_H: 1.2892, d2.loss_bbox_lane: 5.5633, d2.loss_bbox_H: 5.5277, d3.loss_cls_lane: 1.2658, d3.loss_cls_H: 1.2716, d3.loss_bbox_lane: 5.6279, d3.loss_bbox_H: 5.6173, d4.loss_cls_lane: 1.2759, d4.loss_cls_H: 1.2848, d4.loss_bbox_lane: 5.6593, d4.loss_bbox_H: 5.5975, vlm_loss: 5.2146, loss_plan_reg: 0.4092, loss_plan_bound: 0.0000, loss_plan_col: 0.0000, loss_vae_gen: 3.0891, loss: 163.5693, grad_norm: 532.9048
+2026-01-14 11:02:14,212 - 0.0.1 - INFO - Iter [30/88038]	lr: 1.190e-04, eta: 2 days, 12:33:16, time: 2.479, data_time: 0.055, memory: 13054, loss_cls: 1.3448, loss_bbox: 3.4184, loss_traj: 2.1303, loss_traj_cls: 0.5315, loss_traffic: 0.0000, loss_affect: 0.0000, d0.loss_cls: 1.3251, d0.loss_bbox: 3.4332, d0.loss_traffic: 0.0000, d0.loss_affect: 0.0000, d1.loss_cls: 1.2995, d1.loss_bbox: 3.4032, d1.loss_traffic: 0.0000, d1.loss_affect: 0.0000, d2.loss_cls: 1.3008, d2.loss_bbox: 3.3877, d2.loss_traffic: 0.0000, d2.loss_affect: 0.0000, d3.loss_cls: 1.3182, d3.loss_bbox: 3.3822, d3.loss_traffic: 0.0000, d3.loss_affect: 0.0000, d4.loss_cls: 1.3166, d4.loss_bbox: 3.3937, d4.loss_traffic: 0.0000, d4.loss_affect: 0.0000, dn_loss_cls: 1.1878, dn_loss_bbox: 2.9473, dn_loss_traffic: 0.0000, dn_loss_affect: 0.0000, d0.dn_loss_cls: 1.1521, d0.dn_loss_bbox: 3.0203, d0.dn_loss_traffic: 0.0000, d0.dn_loss_affect: 0.0000, d1.dn_loss_cls: 1.1286, d1.dn_loss_bbox: 2.9409, d1.dn_loss_traffic: 0.0000, d1.dn_loss_affect: 0.0000, d2.dn_loss_cls: 1.1101, d2.dn_loss_bbox: 2.8789, d2.dn_loss_traffic: 0.0000, d2.dn_loss_affect: 0.0000, d3.dn_loss_cls: 1.0986, d3.dn_loss_bbox: 2.9853, d3.dn_loss_traffic: 0.0000, d3.dn_loss_affect: 0.0000, d4.dn_loss_cls: 1.1411, d4.dn_loss_bbox: 2.9598, d4.dn_loss_traffic: 0.0000, d4.dn_loss_affect: 0.0000, loss_cls_lane: 0.8570, loss_cls_H: 0.8483, loss_bbox_lane: 4.9286, loss_bbox_H: 4.8370, d0.loss_cls_lane: 0.9078, d0.loss_cls_H: 0.9091, d0.loss_bbox_lane: 5.1014, d0.loss_bbox_H: 5.0200, d1.loss_cls_lane: 0.8687, d1.loss_cls_H: 0.8689, d1.loss_bbox_lane: 4.8096, d1.loss_bbox_H: 4.7397, d2.loss_cls_lane: 0.8733, d2.loss_cls_H: 0.8752, d2.loss_bbox_lane: 4.8185, d2.loss_bbox_H: 4.6990, d3.loss_cls_lane: 0.8518, d3.loss_cls_H: 0.8510, d3.loss_bbox_lane: 4.7670, d3.loss_bbox_H: 4.6484, d4.loss_cls_lane: 0.8678, d4.loss_cls_H: 0.8664, d4.loss_bbox_lane: 4.8760, d4.loss_bbox_H: 4.7743, vlm_loss: 1.8880, loss_plan_reg: 0.4900, loss_plan_bound: 0.0000, loss_plan_col: 0.0000, loss_vae_gen: 0.3723, loss: 126.7510, grad_norm: 221.7316
+2026-01-14 11:02:40,144 - 0.0.1 - INFO - Iter [40/88038]	lr: 1.233e-04, eta: 2 days, 13:15:28, time: 2.593, data_time: 0.049, memory: 13059, loss_cls: 1.3858, loss_bbox: 2.9135, loss_traj: 1.4221, loss_traj_cls: 0.5555, loss_traffic: 1.4056, loss_affect: 0.0000, d0.loss_cls: 1.4404, d0.loss_bbox: 2.9406, d0.loss_traffic: 1.3913, d0.loss_affect: 0.0000, d1.loss_cls: 1.4378, d1.loss_bbox: 2.9511, d1.loss_traffic: 1.2669, d1.loss_affect: 0.0000, d2.loss_cls: 1.4250, d2.loss_bbox: 2.9214, d2.loss_traffic: 1.2567, d2.loss_affect: 0.0000, d3.loss_cls: 1.4075, d3.loss_bbox: 2.9123, d3.loss_traffic: 1.3070, d3.loss_affect: 0.0000, d4.loss_cls: 1.4315, d4.loss_bbox: 2.9453, d4.loss_traffic: 1.3518, d4.loss_affect: 0.0000, dn_loss_cls: 1.0114, dn_loss_bbox: 2.7557, dn_loss_traffic: 1.3975, dn_loss_affect: 0.0000, d0.dn_loss_cls: 0.9981, d0.dn_loss_bbox: 2.8224, d0.dn_loss_traffic: 1.3888, d0.dn_loss_affect: 0.0000, d1.dn_loss_cls: 0.9919, d1.dn_loss_bbox: 2.7416, d1.dn_loss_traffic: 1.2632, d1.dn_loss_affect: 0.0000, d2.dn_loss_cls: 1.0045, d2.dn_loss_bbox: 2.6340, d2.dn_loss_traffic: 1.2572, d2.dn_loss_affect: 0.0000, d3.dn_loss_cls: 0.9901, d3.dn_loss_bbox: 2.6490, d3.dn_loss_traffic: 1.2881, d3.dn_loss_affect: 0.0000, d4.dn_loss_cls: 0.9856, d4.dn_loss_bbox: 2.6494, d4.dn_loss_traffic: 1.3464, d4.dn_loss_affect: 0.0000, loss_cls_lane: 0.6779, loss_cls_H: 0.6762, loss_bbox_lane: 3.7971, loss_bbox_H: 3.7743, d0.loss_cls_lane: 0.6718, d0.loss_cls_H: 0.6717, d0.loss_bbox_lane: 3.8164, d0.loss_bbox_H: 3.8250, d1.loss_cls_lane: 0.6542, d1.loss_cls_H: 0.6543, d1.loss_bbox_lane: 3.7499, d1.loss_bbox_H: 3.7232, d2.loss_cls_lane: 0.6643, d2.loss_cls_H: 0.6629, d2.loss_bbox_lane: 3.7709, d2.loss_bbox_H: 3.7720, d3.loss_cls_lane: 0.6704, d3.loss_cls_H: 0.6710, d3.loss_bbox_lane: 3.7388, d3.loss_bbox_H: 3.7345, d4.loss_cls_lane: 0.6721, d4.loss_cls_H: 0.6713, d4.loss_bbox_lane: 3.7726, d4.loss_bbox_H: 3.7494, vlm_loss: 0.7428, loss_plan_reg: 0.7417, loss_plan_bound: 0.0000, loss_plan_col: 0.0000, loss_vae_gen: 0.1023, loss: 121.0728, grad_norm: 198.1765
+2026-01-14 11:03:05,393 - 0.0.1 - INFO - Iter [50/88038]	lr: 1.276e-04, eta: 2 days, 13:20:34, time: 2.525, data_time: 0.054, memory: 13059, loss_cls: 1.2622, loss_bbox: 3.1699, loss_traj: 2.9889, loss_traj_cls: 0.5594, loss_traffic: 0.5597, loss_affect: 0.0000, d0.loss_cls: 1.3135, d0.loss_bbox: 3.1737, d0.loss_traffic: 0.5209, d0.loss_affect: 0.0000, d1.loss_cls: 1.2743, d1.loss_bbox: 3.1651, d1.loss_traffic: 0.4882, d1.loss_affect: 0.0000, d2.loss_cls: 1.2579, d2.loss_bbox: 3.1352, d2.loss_traffic: 0.4817, d2.loss_affect: 0.0000, d3.loss_cls: 1.2490, d3.loss_bbox: 3.1786, d3.loss_traffic: 0.4822, d3.loss_affect: 0.0000, d4.loss_cls: 1.2391, d4.loss_bbox: 3.1685, d4.loss_traffic: 0.5297, d4.loss_affect: 0.0000, dn_loss_cls: 0.9516, dn_loss_bbox: 2.9493, dn_loss_traffic: 0.5566, dn_loss_affect: 0.0000, d0.dn_loss_cls: 0.9525, d0.dn_loss_bbox: 2.9425, d0.dn_loss_traffic: 0.5143, d0.dn_loss_affect: 0.0000, d1.dn_loss_cls: 0.9246, d1.dn_loss_bbox: 2.8949, d1.dn_loss_traffic: 0.4837, d1.dn_loss_affect: 0.0000, d2.dn_loss_cls: 0.9528, d2.dn_loss_bbox: 2.8414, d2.dn_loss_traffic: 0.4779, d2.dn_loss_affect: 0.0000, d3.dn_loss_cls: 0.9534, d3.dn_loss_bbox: 2.8555, d3.dn_loss_traffic: 0.4745, d3.dn_loss_affect: 0.0000, d4.dn_loss_cls: 0.9301, d4.dn_loss_bbox: 2.9058, d4.dn_loss_traffic: 0.5275, d4.dn_loss_affect: 0.0000, loss_cls_lane: 0.5889, loss_cls_H: 0.5895, loss_bbox_lane: 3.6782, loss_bbox_H: 3.5942, d0.loss_cls_lane: 0.5813, d0.loss_cls_H: 0.5813, d0.loss_bbox_lane: 3.6844, d0.loss_bbox_H: 3.6316, d1.loss_cls_lane: 0.5749, d1.loss_cls_H: 0.5750, d1.loss_bbox_lane: 3.6292, d1.loss_bbox_H: 3.5450, d2.loss_cls_lane: 0.5776, d2.loss_cls_H: 0.5781, d2.loss_bbox_lane: 3.6498, d2.loss_bbox_H: 3.5681, d3.loss_cls_lane: 0.5779, d3.loss_cls_H: 0.5777, d3.loss_bbox_lane: 3.6499, d3.loss_bbox_H: 3.5451, d4.loss_cls_lane: 0.5833, d4.loss_cls_H: 0.5831, d4.loss_bbox_lane: 3.6692, d4.loss_bbox_H: 3.5783, vlm_loss: 0.0309, loss_plan_reg: 0.2912, loss_plan_bound: 0.0000, loss_plan_col: 0.0000, loss_vae_gen: 0.0836, loss: 110.0841, grad_norm: 136.8790
+2026-01-14 11:03:28,472 - 0.0.1 - INFO - Iter [60/88038]	lr: 1.318e-04, eta: 2 days, 12:30:47, time: 2.308, data_time: 0.048, memory: 13059, loss_cls: 1.3412, loss_bbox: 3.2035, loss_traj: 2.4660, loss_traj_cls: 0.5664, loss_traffic: 0.1169, loss_affect: 0.0339, d0.loss_cls: 1.3312, d0.loss_bbox: 3.2453, d0.loss_traffic: 0.1115, d0.loss_affect: 0.0328, d1.loss_cls: 1.3588, d1.loss_bbox: 3.2379, d1.loss_traffic: 0.1050, d1.loss_affect: 0.0331, d2.loss_cls: 1.3561, d2.loss_bbox: 3.2192, d2.loss_traffic: 0.1069, d2.loss_affect: 0.0321, d3.loss_cls: 1.3663, d3.loss_bbox: 3.2047, d3.loss_traffic: 0.1015, d3.loss_affect: 0.0333, d4.loss_cls: 1.3534, d4.loss_bbox: 3.2078, d4.loss_traffic: 0.1066, d4.loss_affect: 0.0329, dn_loss_cls: 0.8709, dn_loss_bbox: 2.9404, dn_loss_traffic: 0.1169, dn_loss_affect: 0.0340, d0.dn_loss_cls: 0.8521, d0.dn_loss_bbox: 2.9689, d0.dn_loss_traffic: 0.1108, d0.dn_loss_affect: 0.0326, d1.dn_loss_cls: 0.8360, d1.dn_loss_bbox: 2.9784, d1.dn_loss_traffic: 0.1040, d1.dn_loss_affect: 0.0333, d2.dn_loss_cls: 0.8562, d2.dn_loss_bbox: 2.9667, d2.dn_loss_traffic: 0.1062, d2.dn_loss_affect: 0.0324, d3.dn_loss_cls: 0.8586, d3.dn_loss_bbox: 2.9718, d3.dn_loss_traffic: 0.1016, d3.dn_loss_affect: 0.0329, d4.dn_loss_cls: 0.8663, d4.dn_loss_bbox: 2.9322, d4.dn_loss_traffic: 0.1060, d4.dn_loss_affect: 0.0326, loss_cls_lane: 0.6597, loss_cls_H: 0.6608, loss_bbox_lane: 4.4939, loss_bbox_H: 4.4532, d0.loss_cls_lane: 0.6843, d0.loss_cls_H: 0.6839, d0.loss_bbox_lane: 4.5214, d0.loss_bbox_H: 4.4858, d1.loss_cls_lane: 0.6729, d1.loss_cls_H: 0.6728, d1.loss_bbox_lane: 4.4919, d1.loss_bbox_H: 4.4424, d2.loss_cls_lane: 0.6575, d2.loss_cls_H: 0.6573, d2.loss_bbox_lane: 4.4866, d2.loss_bbox_H: 4.4159, d3.loss_cls_lane: 0.6645, d3.loss_cls_H: 0.6656, d3.loss_bbox_lane: 4.4689, d3.loss_bbox_H: 4.4228, d4.loss_cls_lane: 0.6717, d4.loss_cls_H: 0.6722, d4.loss_bbox_lane: 4.5079, d4.loss_bbox_H: 4.4581, vlm_loss: 0.0080, loss_plan_reg: 0.3296, loss_plan_bound: 0.0000, loss_plan_col: 0.0000, loss_vae_gen: 0.0546, loss: 117.1098, grad_norm: 172.2428
+2026-01-14 11:03:49,537 - 0.0.1 - INFO - Iter [70/88038]	lr: 1.361e-04, eta: 2 days, 11:12:57, time: 2.106, data_time: 0.051, memory: 13059, loss_cls: 1.4257, loss_bbox: 2.9578, loss_traj: 2.4421, loss_traj_cls: 0.6105, loss_traffic: 1.0758, loss_affect: 0.0000, d0.loss_cls: 1.4231, d0.loss_bbox: 2.9806, d0.loss_traffic: 1.0878, d0.loss_affect: 0.0000, d1.loss_cls: 1.4536, d1.loss_bbox: 2.9458, d1.loss_traffic: 1.0751, d1.loss_affect: 0.0000, d2.loss_cls: 1.4457, d2.loss_bbox: 2.9243, d2.loss_traffic: 1.0947, d2.loss_affect: 0.0000, d3.loss_cls: 1.4255, d3.loss_bbox: 2.9098, d3.loss_traffic: 1.1071, d3.loss_affect: 0.0000, d4.loss_cls: 1.4232, d4.loss_bbox: 2.9212, d4.loss_traffic: 1.1027, d4.loss_affect: 0.0000, dn_loss_cls: 1.0633, dn_loss_bbox: 2.6936, dn_loss_traffic: 1.0747, dn_loss_affect: 0.0000, d0.dn_loss_cls: 0.9740, d0.dn_loss_bbox: 2.6678, d0.dn_loss_traffic: 1.0777, d0.dn_loss_affect: 0.0000, d1.dn_loss_cls: 1.0221, d1.dn_loss_bbox: 2.7234, d1.dn_loss_traffic: 1.0687, d1.dn_loss_affect: 0.0000, d2.dn_loss_cls: 1.0476, d2.dn_loss_bbox: 2.6721, d2.dn_loss_traffic: 1.0839, d2.dn_loss_affect: 0.0000, d3.dn_loss_cls: 1.0593, d3.dn_loss_bbox: 2.7032, d3.dn_loss_traffic: 1.1019, d3.dn_loss_affect: 0.0000, d4.dn_loss_cls: 1.0601, d4.dn_loss_bbox: 2.6940, d4.dn_loss_traffic: 1.0984, d4.dn_loss_affect: 0.0000, loss_cls_lane: 0.7158, loss_cls_H: 0.7157, loss_bbox_lane: 5.2111, loss_bbox_H: 5.3150, d0.loss_cls_lane: 0.7170, d0.loss_cls_H: 0.7157, d0.loss_bbox_lane: 5.1815, d0.loss_bbox_H: 5.2723, d1.loss_cls_lane: 0.7307, d1.loss_cls_H: 0.7303, d1.loss_bbox_lane: 5.2239, d1.loss_bbox_H: 5.3216, d2.loss_cls_lane: 0.7330, d2.loss_cls_H: 0.7336, d2.loss_bbox_lane: 5.2013, d2.loss_bbox_H: 5.2950, d3.loss_cls_lane: 0.7314, d3.loss_cls_H: 0.7292, d3.loss_bbox_lane: 5.2217, d3.loss_bbox_H: 5.3160, d4.loss_cls_lane: 0.7235, d4.loss_cls_H: 0.7227, d4.loss_bbox_lane: 5.2313, d4.loss_bbox_H: 5.3307, vlm_loss: 0.0132, loss_plan_reg: 0.1431, loss_plan_bound: 0.0000, loss_plan_col: 0.0000, loss_vae_gen: 0.0423, loss: 136.7361, grad_norm: 268.8658
+2026-01-14 11:04:22,965 - 0.0.1 - INFO - Iter [80/88038]	lr: 1.404e-04, eta: 2 days, 14:01:02, time: 3.343, data_time: 0.052, memory: 13059, loss_cls: 1.3966, loss_bbox: 3.2756, loss_traj: 2.4514, loss_traj_cls: 0.5817, loss_traffic: 0.3182, loss_affect: 0.2228, d0.loss_cls: 1.3807, d0.loss_bbox: 3.3233, d0.loss_traffic: 0.3171, d0.loss_affect: 0.2149, d1.loss_cls: 1.3909, d1.loss_bbox: 3.3061, d1.loss_traffic: 0.3202, d1.loss_affect: 0.2121, d2.loss_cls: 1.3951, d2.loss_bbox: 3.2787, d2.loss_traffic: 0.3108, d2.loss_affect: 0.2089, d3.loss_cls: 1.3945, d3.loss_bbox: 3.2536, d3.loss_traffic: 0.3110, d3.loss_affect: 0.2110, d4.loss_cls: 1.4075, d4.loss_bbox: 3.2514, d4.loss_traffic: 0.3137, d4.loss_affect: 0.2163, dn_loss_cls: 1.1713, dn_loss_bbox: 2.9479, dn_loss_traffic: 0.3218, dn_loss_affect: 0.2261, d0.dn_loss_cls: 1.0566, d0.dn_loss_bbox: 2.9352, d0.dn_loss_traffic: 0.3204, d0.dn_loss_affect: 0.2137, d1.dn_loss_cls: 1.1406, d1.dn_loss_bbox: 2.9541, d1.dn_loss_traffic: 0.3203, d1.dn_loss_affect: 0.2117, d2.dn_loss_cls: 1.1443, d2.dn_loss_bbox: 2.9221, d2.dn_loss_traffic: 0.3157, d2.dn_loss_affect: 0.2097, d3.dn_loss_cls: 1.1655, d3.dn_loss_bbox: 2.9509, d3.dn_loss_traffic: 0.3119, d3.dn_loss_affect: 0.2122, d4.dn_loss_cls: 1.1872, d4.dn_loss_bbox: 3.0044, d4.dn_loss_traffic: 0.3160, d4.dn_loss_affect: 0.2183, loss_cls_lane: 0.5936, loss_cls_H: 0.5923, loss_bbox_lane: 3.7572, loss_bbox_H: 3.8019, d0.loss_cls_lane: 0.5922, d0.loss_cls_H: 0.5921, d0.loss_bbox_lane: 3.7919, d0.loss_bbox_H: 3.8446, d1.loss_cls_lane: 0.5931, d1.loss_cls_H: 0.5936, d1.loss_bbox_lane: 3.8168, d1.loss_bbox_H: 3.8692, d2.loss_cls_lane: 0.6018, d2.loss_cls_H: 0.6031, d2.loss_bbox_lane: 3.8575, d2.loss_bbox_H: 3.9041, d3.loss_cls_lane: 0.6061, d3.loss_cls_H: 0.6058, d3.loss_bbox_lane: 3.8136, d3.loss_bbox_H: 3.8515, d4.loss_cls_lane: 0.6001, d4.loss_cls_H: 0.6004, d4.loss_bbox_lane: 3.7842, d4.loss_bbox_H: 3.8356, vlm_loss: 0.0071, loss_plan_reg: 0.3337, loss_plan_bound: 0.0000, loss_plan_col: 0.0000, loss_vae_gen: 0.0229, loss: 115.5083, grad_norm: 215.1737
+2026-01-14 11:04:51,968 - 0.0.1 - INFO - Iter [90/88038]	lr: 1.446e-04, eta: 2 days, 14:59:34, time: 2.900, data_time: 0.053, memory: 13059, loss_cls: 1.4361, loss_bbox: 3.4351, loss_traj: 1.7297, loss_traj_cls: 0.5888, loss_traffic: 0.1579, loss_affect: 0.0000, d0.loss_cls: 1.3787, d0.loss_bbox: 3.4594, d0.loss_traffic: 0.1492, d0.loss_affect: 0.0000, d1.loss_cls: 1.4185, d1.loss_bbox: 3.5179, d1.loss_traffic: 0.1603, d1.loss_affect: 0.0000, d2.loss_cls: 1.4400, d2.loss_bbox: 3.4722, d2.loss_traffic: 0.1571, d2.loss_affect: 0.0000, d3.loss_cls: 1.4535, d3.loss_bbox: 3.4619, d3.loss_traffic: 0.1538, d3.loss_affect: 0.0000, d4.loss_cls: 1.4110, d4.loss_bbox: 3.4730, d4.loss_traffic: 0.1516, d4.loss_affect: 0.0000, dn_loss_cls: 0.8785, dn_loss_bbox: 2.9966, dn_loss_traffic: 0.1554, dn_loss_affect: 0.0000, d0.dn_loss_cls: 0.7895, d0.dn_loss_bbox: 3.0657, d0.dn_loss_traffic: 0.1498, d0.dn_loss_affect: 0.0000, d1.dn_loss_cls: 0.8435, d1.dn_loss_bbox: 3.0425, d1.dn_loss_traffic: 0.1592, d1.dn_loss_affect: 0.0000, d2.dn_loss_cls: 0.8703, d2.dn_loss_bbox: 3.0292, d2.dn_loss_traffic: 0.1558, d2.dn_loss_affect: 0.0000, d3.dn_loss_cls: 0.8752, d3.dn_loss_bbox: 3.0275, d3.dn_loss_traffic: 0.1516, d3.dn_loss_affect: 0.0000, d4.dn_loss_cls: 0.9003, d4.dn_loss_bbox: 3.0400, d4.dn_loss_traffic: 0.1503, d4.dn_loss_affect: 0.0000, loss_cls_lane: 0.5691, loss_cls_H: 0.5689, loss_bbox_lane: 3.3016, loss_bbox_H: 3.2860, d0.loss_cls_lane: 0.5681, d0.loss_cls_H: 0.5664, d0.loss_bbox_lane: 3.3510, d0.loss_bbox_H: 3.3282, d1.loss_cls_lane: 0.5676, d1.loss_cls_H: 0.5666, d1.loss_bbox_lane: 3.3389, d1.loss_bbox_H: 3.3263, d2.loss_cls_lane: 0.5719, d2.loss_cls_H: 0.5714, d2.loss_bbox_lane: 3.2869, d2.loss_bbox_H: 3.2748, d3.loss_cls_lane: 0.5687, d3.loss_cls_H: 0.5691, d3.loss_bbox_lane: 3.3381, d3.loss_bbox_H: 3.3269, d4.loss_cls_lane: 0.5712, d4.loss_cls_H: 0.5722, d4.loss_bbox_lane: 3.3385, d4.loss_bbox_H: 3.3339, vlm_loss: 0.0021, loss_plan_reg: 0.2242, loss_plan_bound: 0.0000, loss_plan_col: 0.0000, loss_vae_gen: 0.0182, loss: 103.7932, grad_norm: 238.6126
+2026-01-14 11:05:16,390 - 0.0.1 - INFO - Iter [100/88038]	lr: 1.489e-04, eta: 2 days, 14:39:09, time: 2.442, data_time: 0.048, memory: 13059, loss_cls: 1.3819, loss_bbox: 2.9745, loss_traj: 2.9449, loss_traj_cls: 0.5747, loss_traffic: 0.1742, loss_affect: 0.0000, d0.loss_cls: 1.3558, d0.loss_bbox: 3.0155, d0.loss_traffic: 0.1816, d0.loss_affect: 0.0000, d1.loss_cls: 1.3696, d1.loss_bbox: 3.0086, d1.loss_traffic: 0.1800, d1.loss_affect: 0.0000, d2.loss_cls: 1.3740, d2.loss_bbox: 2.9992, d2.loss_traffic: 0.1746, d2.loss_affect: 0.0000, d3.loss_cls: 1.3959, d3.loss_bbox: 2.9972, d3.loss_traffic: 0.1696, d3.loss_affect: 0.0000, d4.loss_cls: 1.3734, d4.loss_bbox: 2.9699, d4.loss_traffic: 0.1710, d4.loss_affect: 0.0000, dn_loss_cls: 1.0564, dn_loss_bbox: 2.5751, dn_loss_traffic: 0.1737, dn_loss_affect: 0.0000, d0.dn_loss_cls: 0.9154, d0.dn_loss_bbox: 2.5832, d0.dn_loss_traffic: 0.1758, d0.dn_loss_affect: 0.0000, d1.dn_loss_cls: 1.0027, d1.dn_loss_bbox: 2.5613, d1.dn_loss_traffic: 0.1775, d1.dn_loss_affect: 0.0000, d2.dn_loss_cls: 1.0505, d2.dn_loss_bbox: 2.5415, d2.dn_loss_traffic: 0.1724, d2.dn_loss_affect: 0.0000, d3.dn_loss_cls: 1.0437, d3.dn_loss_bbox: 2.5775, d3.dn_loss_traffic: 0.1719, d3.dn_loss_affect: 0.0000, d4.dn_loss_cls: 1.0466, d4.dn_loss_bbox: 2.5706, d4.dn_loss_traffic: 0.1724, d4.dn_loss_affect: 0.0000, loss_cls_lane: 0.6737, loss_cls_H: 0.6745, loss_bbox_lane: 4.3174, loss_bbox_H: 4.3373, d0.loss_cls_lane: 0.6725, d0.loss_cls_H: 0.6726, d0.loss_bbox_lane: 4.3101, d0.loss_bbox_H: 4.3529, d1.loss_cls_lane: 0.6726, d1.loss_cls_H: 0.6723, d1.loss_bbox_lane: 4.3255, d1.loss_bbox_H: 4.3574, d2.loss_cls_lane: 0.6755, d2.loss_cls_H: 0.6742, d2.loss_bbox_lane: 4.3184, d2.loss_bbox_H: 4.3607, d3.loss_cls_lane: 0.6783, d3.loss_cls_H: 0.6773, d3.loss_bbox_lane: 4.3354, d3.loss_bbox_H: 4.3746, d4.loss_cls_lane: 0.6772, d4.loss_cls_H: 0.6752, d4.loss_bbox_lane: 4.3076, d4.loss_bbox_H: 4.3408, vlm_loss: 0.0023, loss_plan_reg: 0.3229, loss_plan_bound: 0.0000, loss_plan_col: 0.0000, loss_vae_gen: 0.0156, loss: 113.8292, grad_norm: 251.6852

@@ -1,0 +1,71 @@
+Traceback (most recent call last):
+  File "./adzoo/orion/train.py", line 238, in <module>
+    main()
+  File "./adzoo/orion/train.py", line 108, in main
+    cfg = Config.fromfile(args.config)
+  File "/mnt/sdb/swseo/Orion/mmcv/utils/config.py", line 331, in fromfile
+    cfg_dict, cfg_text = Config._file2dict(filename,
+  File "/mnt/sdb/swseo/Orion/mmcv/utils/config.py", line 207, in _file2dict
+    mod = import_module(temp_module_name)
+  File "/mnt/sdb/swseo/orion_docker/envs/orion/lib/python3.8/importlib/__init__.py", line 127, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+  File "<frozen importlib._bootstrap>", line 1014, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 991, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 975, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 671, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 843, in exec_module
+  File "<frozen importlib._bootstrap>", line 219, in _call_with_frames_removed
+  File "/tmp/tmpsmyeljqw/tmpmbd6p6d3.py", line 364, in <module>
+NameError: name 'mix_qa_training' is not defined
+Exception ignored in: <function _TemporaryFileCloser.__del__ at 0x7fd7e848e9d0>
+Traceback (most recent call last):
+  File "/mnt/sdb/swseo/orion_docker/envs/orion/lib/python3.8/tempfile.py", line 456, in __del__
+    self.close()
+  File "/mnt/sdb/swseo/orion_docker/envs/orion/lib/python3.8/tempfile.py", line 452, in close
+    unlink(self.name)
+FileNotFoundError: [Errno 2] No such file or directory: '/tmp/tmpsmyeljqw/tmpmbd6p6d3.py'
+/mnt/sdb/swseo/orion_docker/envs/orion/lib/python3.8/site-packages/torch/distributed/launch.py:208: FutureWarning: The module torch.distributed.launch is deprecated
+and will be removed in future. Use torchrun.
+Note that --use-env is set by default in torchrun.
+If your script expects `--local-rank` argument to be set, please
+change it to read from `os.environ['LOCAL_RANK']` instead. See 
+https://pytorch.org/docs/stable/distributed.html#launch-utility for 
+further instructions
+
+  main()
+E0113 16:47:01.825181 140004301371200 torch/distributed/elastic/multiprocessing/api.py:833] failed (exitcode: 1) local_rank: 0 (pid: 12505) of binary: /mnt/sdb/swseo/orion_docker/envs/orion/bin/python
+Traceback (most recent call last):
+  File "/mnt/sdb/swseo/orion_docker/envs/orion/lib/python3.8/runpy.py", line 194, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/mnt/sdb/swseo/orion_docker/envs/orion/lib/python3.8/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/mnt/sdb/swseo/orion_docker/envs/orion/lib/python3.8/site-packages/torch/distributed/launch.py", line 208, in <module>
+    main()
+  File "/mnt/sdb/swseo/orion_docker/envs/orion/lib/python3.8/site-packages/typing_extensions.py", line 2853, in wrapper
+    return arg(*args, **kwargs)
+  File "/mnt/sdb/swseo/orion_docker/envs/orion/lib/python3.8/site-packages/torch/distributed/launch.py", line 204, in main
+    launch(args)
+  File "/mnt/sdb/swseo/orion_docker/envs/orion/lib/python3.8/site-packages/torch/distributed/launch.py", line 189, in launch
+    run(args)
+  File "/mnt/sdb/swseo/orion_docker/envs/orion/lib/python3.8/site-packages/torch/distributed/run.py", line 892, in run
+    elastic_launch(
+  File "/mnt/sdb/swseo/orion_docker/envs/orion/lib/python3.8/site-packages/torch/distributed/launcher/api.py", line 133, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/mnt/sdb/swseo/orion_docker/envs/orion/lib/python3.8/site-packages/torch/distributed/launcher/api.py", line 264, in launch_agent
+    raise ChildFailedError(
+torch.distributed.elastic.multiprocessing.errors.ChildFailedError: 
+============================================================
+./adzoo/orion/train.py FAILED
+------------------------------------------------------------
+Failures:
+  <NO_OTHER_FAILURES>
+------------------------------------------------------------
+Root Cause (first observed failure):
+[0]:
+  time      : 2026-01-13_16:47:01
+  host      : LearningMachine3
+  rank      : 0 (local_rank: 0)
+  exitcode  : 1 (pid: 12505)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+============================================================

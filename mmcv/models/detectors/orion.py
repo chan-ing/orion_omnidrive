@@ -204,12 +204,12 @@ class Orion(MVXTwoStageDetector):
         assert self.use_gen_token if self.use_diff_decoder else True
         if self.use_gen_token:
             if not self.use_diff_decoder and not self.use_mlp_decoder: # use VAE to generate traj
-                self.layer_dim = 4
+                self.layer_dim = 2 # 4
                 self.with_bound_loss = with_bound_loss
                 self.with_cur = True
                 # generator motion & planning
-                self.present_distribution_in_channels = 4096
-                self.future_distribution_in_channels = 4096+12
+                self.present_distribution_in_channels = 2048 # 4096
+                self.future_distribution_in_channels = 2048 + 12 # 4096+12
                 self.now_pred_in_channels = 64
                 self.PROBABILISTIC = True
                 self.latent_dim = 32
@@ -243,9 +243,9 @@ class Orion(MVXTwoStageDetector):
                 )
                 ego_fut_decoder = []
                 for _ in range(2):
-                    ego_fut_decoder.append(Linear(8192, 8192))
+                    ego_fut_decoder.append(Linear(4096, 4096))  # (Linear(8192, 8192))
                     ego_fut_decoder.append(nn.ReLU())
-                ego_fut_decoder.append(Linear(8192, self.ego_fut_mode*2))
+                ego_fut_decoder.append(Linear(4096, self.ego_fut_mode*2))  #(Linear(8192, self.ego_fut_mode*2))
                 self.ego_fut_decoder = nn.Sequential(*ego_fut_decoder)
                 self.loss_plan_reg = build_loss(loss_plan_reg)
                 self.loss_plan_bound = build_loss(loss_plan_bound)

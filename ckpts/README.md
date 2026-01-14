@@ -1,0 +1,1 @@
+/mnt/sdb/swseo/omni_sw/ckpts/README.md

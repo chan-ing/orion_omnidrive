@@ -1,0 +1,8 @@
+worksdir/
+data/
+assets/gifs/
+test/
+*.gif
+__pycache__/
+**/__pycache__/
+*.so

@@ -1,0 +1,77 @@
+Traceback (most recent call last):
+  File "./adzoo/orion/train.py", line 11, in <module>
+    import mmcv
+  File "/mnt/sdb/swseo/Orion/mmcv/__init__.py", line 8, in <module>
+    from .core.bbox.coder.nms_free_coder import NMSFreeCoder
+  File "/mnt/sdb/swseo/Orion/mmcv/core/__init__.py", line 6, in <module>
+    from .post_processing import *  # noqa: F401, F403
+  File "/mnt/sdb/swseo/Orion/mmcv/core/post_processing/__init__.py", line 3, in <module>
+    from .box3d_nms import aligned_3d_nms, box3d_multiclass_nms, circle_nms
+  File "/mnt/sdb/swseo/Orion/mmcv/core/post_processing/box3d_nms.py", line 6, in <module>
+    from mmcv.ops.iou3d_det.iou3d_utils import nms_gpu, nms_normal_gpu
+  File "/mnt/sdb/swseo/Orion/mmcv/ops/__init__.py", line 2, in <module>
+    from .modulated_deform_conv import (ModulatedDeformConv2d,
+  File "/mnt/sdb/swseo/Orion/mmcv/ops/modulated_deform_conv.py", line 11, in <module>
+    from ..models import CONV_LAYERS
+  File "/mnt/sdb/swseo/Orion/mmcv/models/__init__.py", line 1, in <module>
+    from .backbones import *  # noqa: F401,F403
+  File "/mnt/sdb/swseo/Orion/mmcv/models/backbones/__init__.py", line 1, in <module>
+    from .resnet import ResNet, ResNetV1d
+  File "/mnt/sdb/swseo/Orion/mmcv/models/backbones/resnet.py", line 5, in <module>
+    from mmcv.models.bricks import build_conv_layer, build_norm_layer, build_plugin_layer
+  File "/mnt/sdb/swseo/Orion/mmcv/models/bricks/__init__.py", line 5, in <module>
+    from .conv_module import ConvModule
+  File "/mnt/sdb/swseo/Orion/mmcv/models/bricks/conv_module.py", line 8, in <module>
+    from ..utils import constant_init, kaiming_init
+  File "/mnt/sdb/swseo/Orion/mmcv/models/utils/__init__.py", line 15, in <module>
+    from .petr_transformers import *
+  File "/mnt/sdb/swseo/Orion/mmcv/models/utils/petr_transformers.py", line 17, in <module>
+    from .attention import FlashMHA
+  File "/mnt/sdb/swseo/Orion/mmcv/models/utils/attention.py", line 20, in <module>
+    from flash_attn.flash_attn_interface import flash_attn_varlen_kvpacked_func
+ImportError: cannot import name 'flash_attn_varlen_kvpacked_func' from 'flash_attn.flash_attn_interface' (/mnt/sdb/swseo/orion_docker/envs/orion/lib/python3.8/site-packages/flash_attn/flash_attn_interface.py)
+/mnt/sdb/swseo/orion_docker/envs/orion/lib/python3.8/site-packages/torch/distributed/launch.py:208: FutureWarning: The module torch.distributed.launch is deprecated
+and will be removed in future. Use torchrun.
+Note that --use-env is set by default in torchrun.
+If your script expects `--local-rank` argument to be set, please
+change it to read from `os.environ['LOCAL_RANK']` instead. See 
+https://pytorch.org/docs/stable/distributed.html#launch-utility for 
+further instructions
+
+  main()
+E0114 04:15:34.240645 139941284251456 torch/distributed/elastic/multiprocessing/api.py:833] failed (exitcode: 1) local_rank: 0 (pid: 15388) of binary: /mnt/sdb/swseo/orion_docker/envs/orion/bin/python
+Traceback (most recent call last):
+  File "/mnt/sdb/swseo/orion_docker/envs/orion/lib/python3.8/runpy.py", line 194, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "/mnt/sdb/swseo/orion_docker/envs/orion/lib/python3.8/runpy.py", line 87, in _run_code
+    exec(code, run_globals)
+  File "/mnt/sdb/swseo/orion_docker/envs/orion/lib/python3.8/site-packages/torch/distributed/launch.py", line 208, in <module>
+    main()
+  File "/mnt/sdb/swseo/orion_docker/envs/orion/lib/python3.8/site-packages/typing_extensions.py", line 2853, in wrapper
+    return arg(*args, **kwargs)
+  File "/mnt/sdb/swseo/orion_docker/envs/orion/lib/python3.8/site-packages/torch/distributed/launch.py", line 204, in main
+    launch(args)
+  File "/mnt/sdb/swseo/orion_docker/envs/orion/lib/python3.8/site-packages/torch/distributed/launch.py", line 189, in launch
+    run(args)
+  File "/mnt/sdb/swseo/orion_docker/envs/orion/lib/python3.8/site-packages/torch/distributed/run.py", line 892, in run
+    elastic_launch(
+  File "/mnt/sdb/swseo/orion_docker/envs/orion/lib/python3.8/site-packages/torch/distributed/launcher/api.py", line 133, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/mnt/sdb/swseo/orion_docker/envs/orion/lib/python3.8/site-packages/torch/distributed/launcher/api.py", line 264, in launch_agent
+    raise ChildFailedError(
+torch.distributed.elastic.multiprocessing.errors.ChildFailedError: 
+============================================================
+./adzoo/orion/train.py FAILED
+------------------------------------------------------------
+Failures:
+  <NO_OTHER_FAILURES>
+------------------------------------------------------------
+Root Cause (first observed failure):
+[0]:
+  time      : 2026-01-14_04:15:34
+  host      : LearningMachine3
+  rank      : 0 (local_rank: 0)
+  exitcode  : 1 (pid: 15388)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+============================================================
