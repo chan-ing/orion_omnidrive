@@ -121,6 +121,7 @@ class Orion(MVXTwoStageDetector):
                  loss_plan_col=dict(type='PlanCollisionLoss', loss_weight=1.0),
                  loss_vae_gen=dict(type='ProbabilisticLoss', loss_weight=1.0),
                  plan_cls_loss_smooth = False,
+                 tiny_llama = False
                  ):
         super(Orion, self).__init__(pts_voxel_layer, pts_voxel_encoder,
                              pts_middle_encoder, pts_fusion_layer,
@@ -208,8 +209,12 @@ class Orion(MVXTwoStageDetector):
                 self.with_bound_loss = with_bound_loss
                 self.with_cur = True
                 # generator motion & planning
-                self.present_distribution_in_channels = 2048 # 4096
-                self.future_distribution_in_channels = 2048 + 12 # 4096+12
+                if tiny_llama:
+                    self.present_distribution_in_channels = 2048
+                    self.future_distribution_in_channels = 2048 + 12
+                else:
+                    self.present_distribution_in_channels = 4096
+                    self.future_distribution_in_channels = 4096+12
                 self.now_pred_in_channels = 64
                 self.PROBABILISTIC = True
                 self.latent_dim = 32

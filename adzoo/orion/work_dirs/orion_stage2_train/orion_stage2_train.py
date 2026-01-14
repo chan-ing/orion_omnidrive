@@ -175,7 +175,7 @@ eval_pipeline = [
 ]
 data = dict(
     samples_per_gpu=2,
-    workers_per_gpu=4,
+    workers_per_gpu=1,
     train=dict(
         type='B2DOrionDataset',
         data_root='data/bench2drive',
@@ -940,10 +940,10 @@ data = dict(
         type='InfiniteGroupEachSampleInBatchSampler',
         seq_split_num=10,
         warmup_split_num=80,
-        num_iters_to_seq=14673),
+        num_iters_to_seq=117384),
     nonshuffler_sampler=dict(type='DistributedSampler'))
 evaluation = dict(
-    interval=102711,
+    interval=821688,
     pipeline=[
         dict(type='LoadMultiViewImageFromFilesInCeph', to_float32=True),
         dict(
@@ -1017,7 +1017,7 @@ evaluation = dict(
                     ])
             ])
     ])
-checkpoint_config = dict(interval=14673, max_keep_ckpts=3)
+checkpoint_config = dict(interval=117384, max_keep_ckpts=3)
 log_config = dict(
     interval=10,
     hooks=[dict(type='TextLoggerHook'),
@@ -1225,9 +1225,9 @@ eval_cfg = dict(
         traffic_light=(30, 30),
         pedestrian=(40, 40)))
 use_memory = True
-num_gpus = 8
+num_gpus = 1
 batch_size = 2
-num_iters_per_epoch = 14673
+num_iters_per_epoch = 117384
 num_epochs = 6
 llm_path = 'ckpts/tiny_llama/'
 use_gen_token = True
@@ -1244,6 +1244,7 @@ model = dict(
     use_lora=True,
     tokenizer='ckpts/tiny_llama/',
     lm_head='ckpts/tiny_llama/',
+    tiny_llama=True,
     use_gen_token=True,
     use_diff_decoder=False,
     use_col_loss=True,
@@ -1462,5 +1463,5 @@ lr_config = dict(
     warmup_ratio=0.3333333333333333,
     min_lr_ratio=0.001)
 find_unused_parameters = False
-runner = dict(type='IterBasedRunner', max_iters=88038)
+runner = dict(type='IterBasedRunner', max_iters=704304)
 gpu_ids = range(0, 1)
