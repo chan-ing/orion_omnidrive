@@ -280,7 +280,6 @@ class B2DOrionDataset(Custom3DDataset):
         input_dict['command'] = command_nohot
         input_dict['ego_lcf_feat'] = ego_lcf_feat
         input_dict['fut_valid_flag'] = (ego_fut_masks==1).all() 
-
         return input_dict
 
     def get_map_info(self, index):
@@ -405,9 +404,9 @@ class B2DOrionDataset(Custom3DDataset):
                 idx = self._rand_another(idx)
                 continue
             return data
-
+    # ego_his_trajs, ego_fut_trajs, ego_fut_masks, command, command_nohot = 
+    # self.get_ego_trajs(index,self.sample_interval,self.past_frames,self.future_frames)
     def get_ego_trajs(self,idx,sample_rate,past_frames,future_frames):
-
         adj_idx_list = range(idx-past_frames*sample_rate,idx+(future_frames+1)*sample_rate,sample_rate)
         cur_frame = self.data_infos[idx]
         full_adj_track = np.zeros((past_frames+future_frames+1,2))

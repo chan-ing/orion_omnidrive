@@ -68,7 +68,7 @@ train_pipeline = [
         ],
         collect_keys=[
             'lidar2img', 'cam_intrinsic', 'timestamp', 'ego_pose',
-            'ego_pose_inv', 'command', 'prev_exists'
+            'ego_pose_inv', 'command'
         ]),
     dict(
         type='CustomCollect3D',
@@ -175,7 +175,7 @@ eval_pipeline = [
 ]
 data = dict(
     samples_per_gpu=2,
-    workers_per_gpu=4,
+    workers_per_gpu=1,
     train=dict(
         type='B2DOrionDataset',
         data_root='data/bench2drive',
@@ -236,7 +236,7 @@ data = dict(
                 ],
                 collect_keys=[
                     'lidar2img', 'cam_intrinsic', 'timestamp', 'ego_pose',
-                    'ego_pose_inv', 'command', 'prev_exists'
+                    'ego_pose_inv', 'command'
                 ]),
             dict(
                 type='CustomCollect3D',
@@ -940,10 +940,10 @@ data = dict(
         type='InfiniteGroupEachSampleInBatchSampler',
         seq_split_num=10,
         warmup_split_num=80,
-        num_iters_to_seq=29346),
+        num_iters_to_seq=117384),
     nonshuffler_sampler=dict(type='DistributedSampler'))
 evaluation = dict(
-    interval=205422,
+    interval=821688,
     pipeline=[
         dict(type='LoadMultiViewImageFromFilesInCeph', to_float32=True),
         dict(
@@ -1017,7 +1017,7 @@ evaluation = dict(
                     ])
             ])
     ])
-checkpoint_config = dict(interval=29346, max_keep_ckpts=3)
+checkpoint_config = dict(interval=117384, max_keep_ckpts=3)
 log_config = dict(
     interval=10,
     hooks=[dict(type='TextLoggerHook'),
@@ -1054,6 +1054,10 @@ ida_aug_conf = dict(
     H=900,
     W=1600,
     rand_flip=False)
+occflow_grid_conf = dict(
+    xbound=[-50.0, 50.0, 0.5],
+    ybound=[-50.0, 50.0, 0.5],
+    zbound=[-10.0, 10.0, 20.0])
 NameMapping = dict({
     'vehicle.bh.crossbike':
     'bicycle',
@@ -1221,9 +1225,9 @@ eval_cfg = dict(
         traffic_light=(30, 30),
         pedestrian=(40, 40)))
 use_memory = True
-num_gpus = 4
+num_gpus = 1
 batch_size = 2
-num_iters_per_epoch = 29346
+num_iters_per_epoch = 117384
 num_epochs = 6
 llm_path = 'ckpts/tiny_llama/'
 use_gen_token = True
@@ -1240,6 +1244,7 @@ model = dict(
     use_lora=True,
     tokenizer='ckpts/tiny_llama/',
     lm_head='ckpts/tiny_llama/',
+    tiny_llama=True,
     use_gen_token=True,
     use_diff_decoder=False,
     use_col_loss=True,
@@ -1262,7 +1267,7 @@ model = dict(
         qkv_bias=True,
         drop_path_rate=0.1,
         flash_attn=True,
-        with_cp=False,
+        with_cp=True,
         frozen=False),
     map_head=dict(
         type='OrionHeadM',
@@ -1320,12 +1325,41 @@ model = dict(
         n_control=11,
         match_with_velo=False,
         pred_traffic_light_state=True,
+        use_col_loss=True,
         use_memory=True,
         scalar=10,
         noise_scale=1.0,
         dn_weight=1.0,
         split=0.75,
+        use_pe=False,
+        motion_transformer_decoder=dict(
+            type='OrionTransformerDecoder',
+            num_layers=1,
+            embed_dims=256,
+            num_heads=8,
+            dropout=0.0,
+            feedforward_dims=512,
+            with_cp=True,
+            flash_attn=True,
+            return_intermediate=False),
         code_weights=[2.0, 2.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
+        score_threshold=0.2,
+        class_agnostic_nms=dict(
+            classes=[0, 1, 2, 3, 4, 5, 6, 7, 8],
+            compensate=[0, 0, 0.3, 0, 0, 0, 0, 0.3, 0],
+            pre_max_size=1000,
+            post_max_size=300,
+            nms_thr=0.1),
+        memory_decoder_transformer=dict(
+            type='OrionTransformerDecoder',
+            num_layers=1,
+            embed_dims=256,
+            num_heads=8,
+            dropout=0.0,
+            feedforward_dims=512,
+            with_cp=True,
+            flash_attn=True,
+            return_intermediate=False),
         transformer=dict(
             type='PETRTemporalTransformer',
             input_dimension=256,
@@ -1338,7 +1372,7 @@ model = dict(
             with_cp=True,
             flash_attn=True),
         bbox_coder=dict(
-            type='NMSFreeCoder',
+            type='CustomNMSFreeCoder',
             post_center_range=[-61.2, -61.2, -10.0, 61.2, 61.2, 10.0],
             pc_range=[-51.2, -51.2, -5.0, 51.2, 51.2, 3.0],
             max_num=300,
@@ -1409,9 +1443,9 @@ inference_only_pipeline = [
 optimizer = dict(
     constructor='LearningRateDecayOptimizerConstructor',
     type='AdamW',
-    lr=0.0001,
+    lr=8e-05,
     betas=(0.9, 0.999),
-    weight_decay=0.0001,
+    weight_decay=1e-05,
     paramwise_cfg=dict(
         decay_rate=0.9,
         head_decay_rate=4.0,
@@ -1429,5 +1463,5 @@ lr_config = dict(
     warmup_ratio=0.3333333333333333,
     min_lr_ratio=0.001)
 find_unused_parameters = False
-runner = dict(type='IterBasedRunner', max_iters=176076)
+runner = dict(type='IterBasedRunner', max_iters=704304)
 gpu_ids = range(0, 1)

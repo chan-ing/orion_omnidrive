@@ -247,10 +247,17 @@ class Orion(MVXTwoStageDetector):
                     num_layers=self.layer_dim
                 )
                 ego_fut_decoder = []
-                for _ in range(2):
-                    ego_fut_decoder.append(Linear(4096, 4096))  # (Linear(8192, 8192))
-                    ego_fut_decoder.append(nn.ReLU())
-                ego_fut_decoder.append(Linear(4096, self.ego_fut_mode*2))  #(Linear(8192, self.ego_fut_mode*2))
+                if tiny_llama:
+                    for _ in range(2):
+                        ego_fut_decoder.append(Linear(4096, 4096))  # (Linear(8192, 8192))
+                        ego_fut_decoder.append(nn.ReLU())
+                    ego_fut_decoder.append(Linear(4096, self.ego_fut_mode*2))  #(Linear(8192, self.ego_fut_mode*2))
+                else:
+                    for _ in range(2):
+                        ego_fut_decoder.append(Linear(8192, 8192))  # (Linear(8192, 8192))
+                        ego_fut_decoder.append(nn.ReLU())
+                    ego_fut_decoder.append(Linear(8192, self.ego_fut_mode*2))  #(Linear(8192, self.ego_fut_mode*2))
+                    
                 self.ego_fut_decoder = nn.Sequential(*ego_fut_decoder)
                 self.loss_plan_reg = build_loss(loss_plan_reg)
                 self.loss_plan_bound = build_loss(loss_plan_bound)
@@ -433,6 +440,7 @@ class Orion(MVXTwoStageDetector):
         list[list[dict]]), with the outer list indicating test time
         augmentations.
         """
+        # breakpoint()
         if return_loss:
             # return self.forward_train(**data)
             losses = self.forward_train(**data)

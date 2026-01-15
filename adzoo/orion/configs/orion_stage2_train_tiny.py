@@ -2,7 +2,6 @@ _base_ = ["../_base_/datasets/nus-3d.py",
           "../_base_/default_runtime.py"]
 backbone_norm_cfg = dict(type='LN', requires_grad=True)
 
-
 point_cloud_range = [-51.2, -51.2, -5.0, 51.2, 51.2, 3.0]
 voxel_size = [0.2, 0.2, 8]
 
@@ -29,12 +28,12 @@ ida_aug_conf = {
         "rand_flip": False,
     }
 
-# ### Occ args ### 
-# occflow_grid_conf = {
-#     'xbound': [-50.0, 50.0, 0.5],
-#     'ybound': [-50.0, 50.0, 0.5],
-#     'zbound': [-10.0, 10.0, 20.0],
-# }
+### Occ args ### 
+occflow_grid_conf = {
+    'xbound': [-50.0, 50.0, 0.5],
+    'ybound': [-50.0, 50.0, 0.5],
+    'zbound': [-10.0, 10.0, 20.0],
+}
 # For nuScenes we usually do 10-class detection
 NameMapping = {
     #=================vehicle=================
@@ -149,19 +148,14 @@ eval_cfg = {
 
 ### traj prediction args ###
 use_memory = True
-num_gpus = 4
+num_gpus = 1
 batch_size = 2
 num_iters_per_epoch = 234769 // (num_gpus * batch_size)
 num_epochs = 6
-llm_path = 'ckpts/tiny_llama/'
+llm_path = 'ckpts/tiny_llama/'  # 'ckpts/pretrain_qformer/'
 use_gen_token = True
 use_col_loss = True
 collect_keys = ['lidar2img', 'cam_intrinsic', 'timestamp', 'ego_pose', 'ego_pose_inv', 'command']
-
-# cam_intrinsic 없음
-# ['', 'intrinsics', 'extrinsics','', 'img_timestamp', '', '', '', 'can_bus',
-#               'ego_status', 'lidar2ego', 'lidar2global', 'lidar2ego_rotation', 'lidar2ego_translation', 'ego2global_rotation', 'ego2global_translation',
-#               'T_global_inv', 'T_global', 'gt_planning', 'gt_planning_mask']
 # pretrain = True
 
 input_modality = dict(
@@ -178,6 +172,7 @@ model = dict(
     use_lora=True,
     tokenizer=llm_path,
     lm_head=llm_path, # set to None if don't use llm head
+    tiny_llama = True, # set tiny_llama
     use_gen_token = use_gen_token,
     use_diff_decoder = False, 
     use_col_loss = use_col_loss,
@@ -199,8 +194,26 @@ model = dict(
         qkv_bias=True,
         drop_path_rate=0.1,
         flash_attn=True,
-        with_cp=False, # True,
+        with_cp=True,
         frozen=False),
+    # img_backbone=dict(
+    #     type='EVAViT',
+    #     img_size=640, 
+    #     patch_size=16,
+    #     window_size=16,
+    #     in_chans=3,
+    #     embed_dim=1024,
+    #     depth=24,
+    #     num_heads=16,
+    #     mlp_ratio=4*2/3,
+    #     window_block_indexes = (
+    #     list(range(0, 2)) + list(range(3, 5)) + list(range(6, 8)) + list(range(9, 11)) + list(range(12, 14)) + list(range(15, 17)) + list(range(18, 20)) + list(range(21, 23))
+    #     ),
+    #     qkv_bias=True,
+    #     drop_path_rate=0.3,
+    #     flash_attn=True,
+    #     with_cp=True, 
+    #     frozen=False,), 
     map_head=dict(
         type='OrionHeadM',
         num_classes=6,
@@ -257,30 +270,43 @@ model = dict(
         n_control=11, # align with centerline query defination
         match_with_velo=False,
         pred_traffic_light_state=True,
+        use_col_loss = use_col_loss,
         use_memory = use_memory,
         scalar=10, ##noise groups
         noise_scale = 1.0, 
         dn_weight= 1.0, ##dn loss weight
         split = 0.75, ###positive rate
-
+        use_pe=False, ## we don't have bev coord
+        motion_transformer_decoder=dict(
+            type='OrionTransformerDecoder',
+            num_layers=1,
+            embed_dims=_dim_,
+            num_heads=8,
+            dropout=0.0,
+            feedforward_dims=_ffn_dim_,
+            with_cp=True,
+            flash_attn=True,
+            return_intermediate=False,
+            ),
         code_weights = [2.0, 2.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0],
-        # class_agnostic_nms=dict(
-        #     classes=[0, 1, 2, 3, 4, 5, 6, 7, 8], 
-        #     compensate=[0, 0, 0.3, 0, 0, 0, 0, 0.3, 0],
-        #     pre_max_size=1000,
-        #     post_max_size=300,
-        #     nms_thr=0.1,
-        # ),
-        # memory_decoder_transformer = dict(
-        #     type='OrionTransformerDecoder',
-        #     num_layers=1,
-        #     embed_dims=_dim_,
-        #     num_heads=8,
-        #     dropout=0.0,
-        #     feedforward_dims=_ffn_dim_,
-        #     with_cp=True,
-        #     flash_attn=True,
-        #     return_intermediate=False),
+        score_threshold=0.2,
+        class_agnostic_nms=dict(
+            classes=[0, 1, 2, 3, 4, 5, 6, 7, 8], 
+            compensate=[0, 0, 0.3, 0, 0, 0, 0, 0.3, 0],
+            pre_max_size=1000,
+            post_max_size=300,
+            nms_thr=0.1,
+        ),
+        memory_decoder_transformer = dict(
+            type='OrionTransformerDecoder',
+            num_layers=1,
+            embed_dims=_dim_,
+            num_heads=8,
+            dropout=0.0,
+            feedforward_dims=_ffn_dim_,
+            with_cp=True,
+            flash_attn=True,
+            return_intermediate=False),
         transformer=dict(
             type='PETRTemporalTransformer',
                  input_dimension=256,
@@ -294,19 +320,12 @@ model = dict(
                  flash_attn=True,
             ),
         bbox_coder=dict(
-            type='NMSFreeCoder',
+            type='CustomNMSFreeCoder',
             post_center_range=[-61.2, -61.2, -10.0, 61.2, 61.2, 10.0],
-            pc_range=point_cloud_range,
+            pc_range=point_cloud_range, # 
             max_num=300,
             voxel_size=voxel_size,
             num_classes=9), 
-        # bbox_coder=dict(
-        #     type='CustomNMSFreeCoder',
-        #     post_center_range=[-61.2, -61.2, -10.0, 61.2, 61.2, 10.0],
-        #     pc_range=point_cloud_range, # 
-        #     max_num=300,
-        #     voxel_size=voxel_size,
-        #     num_classes=9), 
         loss_cls=dict(
             type='FocalLoss',
             use_sigmoid=True,
@@ -367,16 +386,15 @@ train_pipeline = [
     dict(type='ResizeMultiview3D', img_scale=(640, 640), keep_ratio=False, multiscale_mode='value'),
     dict(type="PadMultiViewImage", size_divisor=32),
     dict(type="NormalizeMultiviewImage", **img_norm_cfg),
-    
-    dict(type="PETRFormatBundle3D", class_names=class_names, collect_keys = collect_keys + ['prev_exists']),
+    dict(type="PETRFormatBundle3D", class_names=class_names, collect_keys = collect_keys),
     dict(type='CustomCollect3D',\
          keys=['gt_bboxes_3d', 'gt_labels_3d', 'img', 'ego_his_trajs','input_ids','gt_attr_labels', 'ego_fut_trajs', 'ego_fut_masks','ego_fut_cmd', 'ego_lcf_feat','vlm_labels','can_bus', 'traffic_state_mask', 'traffic_state']+collect_keys),
-] # meta_keys=('filename', 'ori_shape', 'img_shape', 'pad_shape', 'scale_factor', 'flip', 'box_mode_3d', 'box_type_3d', 'img_norm_cfg', 'scene_token', '',''))
+]
 
 test_pipeline = [
     dict(type='LoadMultiViewImageFromFilesInCeph', to_float32=True),
     dict(type='LoadAnnotations3D', with_bbox_3d=True, with_label_3d=True, with_attr_label=True),
-    dict(type='VADObjectRangeFilter', point_cloud_range=point_cloud_range),
+        dict(type='VADObjectRangeFilter', point_cloud_range=point_cloud_range),
     dict(type='VADObjectNameFilter', classes=class_names),
     
     # dict(type='ResizeMultiview3D', img_scale=(640, 640), keep_ratio=False, multiscale_mode='value'),
@@ -435,7 +453,7 @@ inference_only_pipeline = [
 ]
 data = dict(
     samples_per_gpu=batch_size,
-    workers_per_gpu=4,
+    workers_per_gpu=1,
     train=dict(
             type=dataset_type,
             seq_mode=True,
@@ -500,8 +518,7 @@ data = dict(
 
 
 optimizer = dict(constructor='LearningRateDecayOptimizerConstructor', type='AdamW', 
-                 lr=1e-4, betas=(0.9, 0.999), weight_decay=1e-4,
-                 #lr=8e-5, betas=(0.9, 0.999), weight_decay=1e-5,
+                 lr=8e-5, betas=(0.9, 0.999), weight_decay=1e-5,
                  paramwise_cfg={'decay_rate': 0.9,
                                 'head_decay_rate': 4.0,
                                 'lm_head_decay_rate': 0.1,
